@@ -917,7 +917,7 @@ SDL_SetDisplayModeForDisplay(SDL_VideoDisplay * display, const SDL_DisplayMode *
 }
 
 int
-SDL_GetWindowDisplay(SDL_Window * window)
+SDL_GetWindowDisplayIndex(SDL_Window * window)
 {
     int displayIndex;
     int i, dist;
@@ -979,7 +979,7 @@ SDL_GetWindowDisplay(SDL_Window * window)
 SDL_VideoDisplay *
 SDL_GetDisplayForWindow(SDL_Window *window)
 {
-    int displayIndex = SDL_GetWindowDisplay(window);
+    int displayIndex = SDL_GetWindowDisplayIndex(window);
     if (displayIndex >= 0) {
         return &_this->displays[displayIndex];
     } else {
