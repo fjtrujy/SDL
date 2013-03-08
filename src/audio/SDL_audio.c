@@ -203,7 +203,7 @@ SDL_AudioLockDevice_Default(SDL_AudioDevice * device)
     if (device->thread && (SDL_ThreadID() == device->threadid)) {
         return;
     }
-    SDL_mutexP(device->mixer_lock);
+    SDL_LockMutex(device->mixer_lock);
 }
 
 static void
@@ -212,7 +212,7 @@ SDL_AudioUnlockDevice_Default(SDL_AudioDevice * device)
     if (device->thread && (SDL_ThreadID() == device->threadid)) {
         return;
     }
-    SDL_mutexV(device->mixer_lock);
+    SDL_UnlockMutex(device->mixer_lock);
 }
 
 
@@ -410,9 +410,9 @@ SDL_RunAudio(void *devicep)
                 }
 
                 /* Read from the callback into the _input_ stream */
-                SDL_mutexP(device->mixer_lock);
+                SDL_LockMutex(device->mixer_lock);
                 (*fill) (udata, istream, istream_len);
-                SDL_mutexV(device->mixer_lock);
+                SDL_UnlockMutex(device->mixer_lock);
 
                 /* Convert the audio if necessary and write to the streamer */
                 if (device->convert.needed) {
@@ -483,9 +483,9 @@ SDL_RunAudio(void *devicep)
                 }
             }
 
-            SDL_mutexP(device->mixer_lock);
+            SDL_LockMutex(device->mixer_lock);
             (*fill) (udata, stream, stream_len);
-            SDL_mutexV(device->mixer_lock);
+            SDL_UnlockMutex(device->mixer_lock);
 
             /* Convert the audio if necessary */
             if (device->convert.needed) {
