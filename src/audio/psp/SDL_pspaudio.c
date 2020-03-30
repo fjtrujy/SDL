@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2013 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,6 +18,9 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+#include "../../SDL_internal.h"
+
+#if SDL_AUDIO_DRIVER_PSP
 
 #include <stdio.h>
 #include <string.h>
@@ -27,7 +30,6 @@
 #include "SDL_audio.h"
 #include "SDL_error.h"
 #include "SDL_timer.h"
-#include "../SDL_audiomem.h"
 #include "../SDL_audio_c.h"
 #include "../SDL_audiodev_c.h"
 #include "../SDL_sysaudio.h"
@@ -37,150 +39,129 @@
 #include <pspthreadman.h>
 
 /* The tag name used by PSP audio */
-#define PSPAUD_DRIVER_NAME         "psp"
+#define PSPAUDIO_DRIVER_NAME         "psp"
 
 static int
-PSPAUD_OpenDevice(_THIS, const char *devname, int iscapture)
+PSPAUDIO_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
 {
-	int format, mixlen, i;
+    int format, mixlen, i;
     this->hidden = (struct SDL_PrivateAudioData *)
         SDL_malloc(sizeof(*this->hidden));
     if (this->hidden == NULL) {
-        SDL_OutOfMemory();
-        return 0;
+        return SDL_OutOfMemory();
     }
-    SDL_memset(this->hidden, 0, sizeof(*this->hidden));
-	switch (this->spec.format & 0xff) {
-		case 8:
-		case 16:
-			this->spec.format = AUDIO_S16LSB;
-			break;
-		default:
-			SDL_SetError("Unsupported audio format");
-			return 0;
-	}
-
-	/* The sample count must be a multiple of 64. */
-	this->spec.samples = PSP_AUDIO_SAMPLE_ALIGN(this->spec.samples);
-	this->spec.freq = 44100;
-
-	/* Update the fragment size as size in bytes. */
-//	SDL_CalculateAudioSpec(this->spec); MOD
-    switch (this->spec.format) {
-    case AUDIO_U8:
-        this->spec.silence = 0x80;
-        break;
-    default:
-        this->spec.silence = 0x00;
-        break;
+    SDL_zerop(this->hidden);
+    switch (this->spec.format & 0xff) {
+        case 8:
+        case 16:
+            this->spec.format = AUDIO_S16LSB;
+            break;
+        default:
+            return SDL_SetError("Unsupported audio format");
     }
-    this->spec.size = SDL_AUDIO_BITSIZE(this->spec.format) / 8;
-    this->spec.size *= this->spec.channels;
-    this->spec.size *= this->spec.samples;
-    
-//==========================================
 
-	/* Allocate the mixing buffer.  Its size and starting address must
-	   be a multiple of 64 bytes.  Our sample count is already a multiple of
-	   64, so spec->size should be a multiple of 64 as well. */
-	mixlen = this->spec.size * NUM_BUFFERS;
-	this->hidden->rawbuf = (Uint8 *) memalign(64, mixlen);
-	if (this->hidden->rawbuf == NULL) {
-		SDL_SetError("Couldn't allocate mixing buffer");
-		return 0;
-	}
+    /* The sample count must be a multiple of 64. */
+    this->spec.samples = PSP_AUDIO_SAMPLE_ALIGN(this->spec.samples);
+    this->spec.freq = 44100;
 
-	/* Setup the hardware channel. */
-	if (this->spec.channels == 1) {
-		format = PSP_AUDIO_FORMAT_MONO;
-	} else {
-		format = PSP_AUDIO_FORMAT_STEREO;
-	}
-	this->hidden->channel = sceAudioChReserve(PSP_AUDIO_NEXT_CHANNEL, this->spec.samples, format);
-	if (this->hidden->channel < 0) {
-		SDL_SetError("Couldn't reserve hardware channel");
-		free(this->hidden->rawbuf);
-		this->hidden->rawbuf = NULL;
-		return 0;
-	}
+    /* Update the fragment size as size in bytes. */
+    SDL_CalculateAudioSpec(&this->spec);
 
-	memset(this->hidden->rawbuf, 0, mixlen);
-	for (i = 0; i < NUM_BUFFERS; i++) {
-		this->hidden->mixbufs[i] = &this->hidden->rawbuf[i * this->spec.size];
-	}
+    /* Allocate the mixing buffer.  Its size and starting address must
+       be a multiple of 64 bytes.  Our sample count is already a multiple of
+       64, so spec->size should be a multiple of 64 as well. */
+    mixlen = this->spec.size * NUM_BUFFERS;
+    this->hidden->rawbuf = (Uint8 *) memalign(64, mixlen);
+    if (this->hidden->rawbuf == NULL) {
+        return SDL_SetError("Couldn't allocate mixing buffer");
+    }
 
-	this->hidden->next_buffer = 0;
-	return 1;
+    /* Setup the hardware channel. */
+    if (this->spec.channels == 1) {
+        format = PSP_AUDIO_FORMAT_MONO;
+    } else {
+        this->spec.channels = 2;
+        format = PSP_AUDIO_FORMAT_STEREO;
+    }
+    this->hidden->channel = sceAudioChReserve(PSP_AUDIO_NEXT_CHANNEL, this->spec.samples, format);
+    if (this->hidden->channel < 0) {
+        free(this->hidden->rawbuf);
+        this->hidden->rawbuf = NULL;
+        return SDL_SetError("Couldn't reserve hardware channel");
+    }
+
+    memset(this->hidden->rawbuf, 0, mixlen);
+    for (i = 0; i < NUM_BUFFERS; i++) {
+        this->hidden->mixbufs[i] = &this->hidden->rawbuf[i * this->spec.size];
+    }
+
+    this->hidden->next_buffer = 0;
+    return 0;
 }
 
-static void PSPAUD_PlayDevice(_THIS)
+static void PSPAUDIO_PlayDevice(_THIS)
 {
-	Uint8 *mixbuf = this->hidden->mixbufs[this->hidden->next_buffer];
+    Uint8 *mixbuf = this->hidden->mixbufs[this->hidden->next_buffer];
 
-	if (this->spec.channels == 1) {
-		sceAudioOutputBlocking(this->hidden->channel, PSP_AUDIO_VOLUME_MAX, mixbuf);
-	} else {
-		sceAudioOutputPannedBlocking(this->hidden->channel, PSP_AUDIO_VOLUME_MAX, PSP_AUDIO_VOLUME_MAX, mixbuf);
-	}
+    if (this->spec.channels == 1) {
+        sceAudioOutputBlocking(this->hidden->channel, PSP_AUDIO_VOLUME_MAX, mixbuf);
+    } else {
+        sceAudioOutputPannedBlocking(this->hidden->channel, PSP_AUDIO_VOLUME_MAX, PSP_AUDIO_VOLUME_MAX, mixbuf);
+    }
 
-	this->hidden->next_buffer = (this->hidden->next_buffer + 1) % NUM_BUFFERS;
+    this->hidden->next_buffer = (this->hidden->next_buffer + 1) % NUM_BUFFERS;
 }
 
 /* This function waits until it is possible to write a full sound buffer */
-static void PSPAUD_WaitDevice(_THIS)
+static void PSPAUDIO_WaitDevice(_THIS)
 {
-	/* Because we block when sending audio, there's no need for this function to do anything. */
+    /* Because we block when sending audio, there's no need for this function to do anything. */
 }
-static Uint8 *PSPAUD_GetDeviceBuf(_THIS)
+static Uint8 *PSPAUDIO_GetDeviceBuf(_THIS)
 {
-	return this->hidden->mixbufs[this->hidden->next_buffer];
+    return this->hidden->mixbufs[this->hidden->next_buffer];
 }
 
-static void PSPAUD_CloseDevice(_THIS)
+static void PSPAUDIO_CloseDevice(_THIS)
 {
-	if (this->hidden->channel >= 0) {
-		sceAudioChRelease(this->hidden->channel);
-		this->hidden->channel = -1;
-	}
-
-	if (this->hidden->rawbuf != NULL) {
-		free(this->hidden->rawbuf);
-		this->hidden->rawbuf = NULL;
-	}
+    if (this->hidden->channel >= 0) {
+        sceAudioChRelease(this->hidden->channel);
+    }
+    free(this->hidden->rawbuf);  /* this uses memalign(), not SDL_malloc(). */
+    SDL_free(this->hidden);
 }
-static void PSPAUD_ThreadInit(_THIS)
+
+static void PSPAUDIO_ThreadInit(_THIS)
 {
-	/* Increase the priority of this audio thread by 1 to put it
-	   ahead of other SDL threads. */
-	SceUID thid;
-	SceKernelThreadInfo status;
-	thid = sceKernelGetThreadId();
-	status.size = sizeof(SceKernelThreadInfo);
-	if (sceKernelReferThreadStatus(thid, &status) == 0) {
-		sceKernelChangeThreadPriority(thid, status.currentPriority - 1);
-	}
+    /* Increase the priority of this audio thread by 1 to put it
+       ahead of other SDL threads. */
+    SceUID thid;
+    SceKernelThreadInfo status;
+    thid = sceKernelGetThreadId();
+    status.size = sizeof(SceKernelThreadInfo);
+    if (sceKernelReferThreadStatus(thid, &status) == 0) {
+        sceKernelChangeThreadPriority(thid, status.currentPriority - 1);
+    }
 }
 
 
 static int
-PSPAUD_Init(SDL_AudioDriverImpl * impl)
+PSPAUDIO_Init(SDL_AudioDriverImpl * impl)
 {
+    /* Set the function pointers */
+    impl->OpenDevice = PSPAUDIO_OpenDevice;
+    impl->PlayDevice = PSPAUDIO_PlayDevice;
+    impl->WaitDevice = PSPAUDIO_WaitDevice;
+    impl->GetDeviceBuf = PSPAUDIO_GetDeviceBuf;
+    impl->CloseDevice = PSPAUDIO_CloseDevice;
+    impl->ThreadInit = PSPAUDIO_ThreadInit;
 
-    // Set the function pointers 
-    impl->OpenDevice = PSPAUD_OpenDevice;
-    impl->PlayDevice = PSPAUD_PlayDevice;
-    impl->WaitDevice = PSPAUD_WaitDevice;
-    impl->GetDeviceBuf = PSPAUD_GetDeviceBuf;   
-    impl->WaitDone = PSPAUD_WaitDevice;
-    impl->CloseDevice = PSPAUD_CloseDevice;
-    impl->ThreadInit = PSPAUD_ThreadInit;
-    
-    //PSP audio device
-    impl->OnlyHasDefaultOutputDevice = 1;    
+    /* PSP audio device */
+    impl->OnlyHasDefaultOutputDevice = 1;
 /*
     impl->HasCaptureSupport = 1;
 
-    impl->OnlyHasDefaultInputDevice = 1;
+    impl->OnlyHasDefaultCaptureDevice = 1;
 */
     /*
     impl->DetectDevices = DSOUND_DetectDevices;
@@ -189,11 +170,12 @@ PSPAUD_Init(SDL_AudioDriverImpl * impl)
     return 1;   /* this audio target is available. */
 }
 
-AudioBootStrap PSPAUD_bootstrap = {
-    "psp", "PSP audio driver", PSPAUD_Init, 0
+AudioBootStrap PSPAUDIO_bootstrap = {
+    "psp", "PSP audio driver", PSPAUDIO_Init, 0
 };
 
- /* SDL_AUDI*/
+ /* SDL_AUDI */
 
+#endif /* SDL_AUDIO_DRIVER_PSP */
 
-
+/* vi: set ts=4 sw=4 expandtab: */

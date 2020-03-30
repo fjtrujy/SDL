@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2013 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,8 +19,8 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifndef _SDL_directfb_modes_h
-#define _SDL_directfb_modes_h
+#ifndef SDL_directfb_modes_h_
+#define SDL_directfb_modes_h_
 
 #include <directfb.h>
 
@@ -31,19 +31,19 @@
 typedef struct _DFB_DisplayData DFB_DisplayData;
 struct _DFB_DisplayData
 {
-    IDirectFBDisplayLayer 	*layer;
-    DFBSurfacePixelFormat 	pixelformat;
-    /* FIXME: support for multiple video layer. 
-     * However, I do not know any card supporting 
+    IDirectFBDisplayLayer   *layer;
+    DFBSurfacePixelFormat   pixelformat;
+    /* FIXME: support for multiple video layer.
+     * However, I do not know any card supporting
      * more than one
      */
-    DFBDisplayLayerID 		vidID;
-    IDirectFBDisplayLayer 	*vidlayer;
+    DFBDisplayLayerID       vidID;
+    IDirectFBDisplayLayer   *vidlayer;
 
-    int 					vidIDinuse;
+    int                     vidIDinuse;
 
-    int 					cw;
-    int 					ch;
+    int                     cw;
+    int                     ch;
 };
 
 
@@ -54,6 +54,6 @@ extern void DirectFB_QuitModes(_THIS);
 
 extern void DirectFB_SetContext(_THIS, SDL_Window *window);
 
-#endif /* _SDL_directfb_modes_h */
+#endif /* SDL_directfb_modes_h_ */
 
 /* vi: set ts=4 sw=4 expandtab: */

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2013 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,6 +18,9 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+#include "../../SDL_internal.h"
+
+#if SDL_VIDEO_DRIVER_PSP
 
 #include <stdlib.h>
 #include <string.h>
@@ -29,44 +32,40 @@
 /*****************************************************************************/
 /* SDL OpenGL/OpenGL ES functions                                            */
 /*****************************************************************************/
-#define EGLCHK(stmt)							\
-	do {										\
-		EGLint err;								\
-												\
-		stmt;									\
-		err = eglGetError();					\
-		if (err != EGL_SUCCESS) {				\
-			SDL_SetError("EGL error %d", err);	\
-			return 0;							\
-		}										\
-	} while (0)
+#define EGLCHK(stmt)                            \
+    do {                                        \
+        EGLint err;                             \
+                                                \
+        stmt;                                   \
+        err = eglGetError();                    \
+        if (err != EGL_SUCCESS) {               \
+            SDL_SetError("EGL error %d", err);  \
+            return 0;                           \
+        }                                       \
+    } while (0)
 
 int
 PSP_GL_LoadLibrary(_THIS, const char *path)
 {
-  if (!_this->gl_config.driver_loaded) {
-		_this->gl_config.driver_loaded = 1;
-  }
-
   return 0;
 }
 
-/* pspgl doesn't provide this call, so stub it out since SDL requires it. 
+/* pspgl doesn't provide this call, so stub it out since SDL requires it.
 #define GLSTUB(func,params) void func params {}
-  		 
+
 GLSTUB(glOrtho,(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top,
-          			GLdouble zNear, GLdouble zFar))
+                    GLdouble zNear, GLdouble zFar))
 */
 void *
 PSP_GL_GetProcAddress(_THIS, const char *proc)
 {
-		return eglGetProcAddress(proc);
+        return eglGetProcAddress(proc);
 }
 
 void
 PSP_GL_UnloadLibrary(_THIS)
 {
-		eglTerminate(_this->gl_data->display);
+        eglTerminate(_this->gl_data->display);
 }
 
 static EGLint width = 480;
@@ -78,64 +77,64 @@ PSP_GL_CreateContext(_THIS, SDL_Window * window)
 
     SDL_WindowData *wdata = (SDL_WindowData *) window->driverdata;
 
-		EGLint attribs[32];
-		EGLDisplay display;
-		EGLContext context;
-		EGLSurface surface;
-		EGLConfig config;
-		EGLint num_configs;
-		int i;
-	
+        EGLint attribs[32];
+        EGLDisplay display;
+        EGLContext context;
+        EGLSurface surface;
+        EGLConfig config;
+        EGLint num_configs;
+        int i;
 
-	/* EGL init taken from glutCreateWindow() in PSPGL's glut.c. */
-		EGLCHK(display = eglGetDisplay(0));
-		EGLCHK(eglInitialize(display, NULL, NULL));
-    wdata->uses_gles = SDL_TRUE;   
-		window->flags |= SDL_WINDOW_FULLSCREEN;
-    	
-		/* Setup the config based on SDL's current values. */
-		i = 0;
-		attribs[i++] = EGL_RED_SIZE;
-		attribs[i++] = _this->gl_config.red_size;
-		attribs[i++] = EGL_GREEN_SIZE;
-		attribs[i++] = _this->gl_config.green_size;
-		attribs[i++] = EGL_BLUE_SIZE;
-		attribs[i++] = _this->gl_config.blue_size;
-		attribs[i++] = EGL_DEPTH_SIZE;
-		attribs[i++] = _this->gl_config.depth_size;
-	
-		if (_this->gl_config.alpha_size)
-		{
-			attribs[i++] = EGL_ALPHA_SIZE;
-			attribs[i++] = _this->gl_config.alpha_size;
-		}
-		if (_this->gl_config.stencil_size)
-		{
-			attribs[i++] = EGL_STENCIL_SIZE;
-			attribs[i++] = _this->gl_config.stencil_size;
-		}
-	
-		attribs[i++] = EGL_NONE;
-		
-		EGLCHK(eglChooseConfig(display, attribs, &config, 1, &num_configs));
-	
-		if (num_configs == 0)
-		{
-			SDL_SetError("No valid EGL configs for requested mode");
-			return 0;
-		}
-		
-		EGLCHK(eglGetConfigAttrib(display, config, EGL_WIDTH, &width));
-		EGLCHK(eglGetConfigAttrib(display, config, EGL_HEIGHT, &height));
 
-		EGLCHK(context = eglCreateContext(display, config, NULL, NULL));
-		EGLCHK(surface = eglCreateWindowSurface(display, config, 0, NULL));
-		EGLCHK(eglMakeCurrent(display, surface, surface, context));	
-		
-		_this->gl_data->display = display;
-		_this->gl_data->context = context;
-		_this->gl_data->surface = surface;
-	
+    /* EGL init taken from glutCreateWindow() in PSPGL's glut.c. */
+        EGLCHK(display = eglGetDisplay(0));
+        EGLCHK(eglInitialize(display, NULL, NULL));
+    wdata->uses_gles = SDL_TRUE;
+        window->flags |= SDL_WINDOW_FULLSCREEN;
+
+        /* Setup the config based on SDL's current values. */
+        i = 0;
+        attribs[i++] = EGL_RED_SIZE;
+        attribs[i++] = _this->gl_config.red_size;
+        attribs[i++] = EGL_GREEN_SIZE;
+        attribs[i++] = _this->gl_config.green_size;
+        attribs[i++] = EGL_BLUE_SIZE;
+        attribs[i++] = _this->gl_config.blue_size;
+        attribs[i++] = EGL_DEPTH_SIZE;
+        attribs[i++] = _this->gl_config.depth_size;
+
+        if (_this->gl_config.alpha_size)
+        {
+            attribs[i++] = EGL_ALPHA_SIZE;
+            attribs[i++] = _this->gl_config.alpha_size;
+        }
+        if (_this->gl_config.stencil_size)
+        {
+            attribs[i++] = EGL_STENCIL_SIZE;
+            attribs[i++] = _this->gl_config.stencil_size;
+        }
+
+        attribs[i++] = EGL_NONE;
+
+        EGLCHK(eglChooseConfig(display, attribs, &config, 1, &num_configs));
+
+        if (num_configs == 0)
+        {
+            SDL_SetError("No valid EGL configs for requested mode");
+            return 0;
+        }
+
+        EGLCHK(eglGetConfigAttrib(display, config, EGL_WIDTH, &width));
+        EGLCHK(eglGetConfigAttrib(display, config, EGL_HEIGHT, &height));
+
+        EGLCHK(context = eglCreateContext(display, config, NULL, NULL));
+        EGLCHK(surface = eglCreateWindowSurface(display, config, 0, NULL));
+        EGLCHK(eglMakeCurrent(display, surface, surface, context));
+
+        _this->gl_data->display = display;
+        _this->gl_data->context = context;
+        _this->gl_data->surface = surface;
+
 
     return context;
 }
@@ -143,19 +142,18 @@ PSP_GL_CreateContext(_THIS, SDL_Window * window)
 int
 PSP_GL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
 {
-		if (!eglMakeCurrent(_this->gl_data->display, _this->gl_data->surface,
-	                      _this->gl_data->surface, _this->gl_data->context))
-		{
-			SDL_SetError("Unable to make EGL context current");
-			return -1;
-		}
+        if (!eglMakeCurrent(_this->gl_data->display, _this->gl_data->surface,
+                          _this->gl_data->surface, _this->gl_data->context))
+        {
+            return SDL_SetError("Unable to make EGL context current");
+        }
     return 0;
 }
 
 int
 PSP_GL_SetSwapInterval(_THIS, int interval)
 {
-    EGLBoolean status;    
+    EGLBoolean status;
     status = eglSwapInterval(_this->gl_data->display, interval);
     if (status == EGL_TRUE) {
         /* Return success to upper level */
@@ -163,8 +161,7 @@ PSP_GL_SetSwapInterval(_THIS, int interval)
         return 0;
     }
     /* Failed to set swap interval */
-    SDL_SetError("Unable to set the EGL swap interval");
-    return -1;
+    return SDL_SetError("Unable to set the EGL swap interval");
 }
 
 int
@@ -173,10 +170,13 @@ PSP_GL_GetSwapInterval(_THIS)
     return _this->gl_data->swapinterval;
 }
 
-void
+int
 PSP_GL_SwapWindow(_THIS, SDL_Window * window)
 {
-    eglSwapBuffers(_this->gl_data->display, _this->gl_data->surface);
+    if (!eglSwapBuffers(_this->gl_data->display, _this->gl_data->surface)) {
+        return SDL_SetError("eglSwapBuffers() failed");
+    }
+    return 0;
 }
 
 void
@@ -205,3 +205,6 @@ PSP_GL_DeleteContext(_THIS, SDL_GLContext context)
     return;
 }
 
+#endif /* SDL_VIDEO_DRIVER_PSP */
+
+/* vi: set ts=4 sw=4 expandtab: */

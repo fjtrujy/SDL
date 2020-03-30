@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2013 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,21 +18,16 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_config.h"
+#include "../../SDL_internal.h"
 
 #if SDL_VIDEO_DRIVER_COCOA
-
-#if defined(__APPLE__) && defined(__POWERPC__)
-#include <altivec.h>
-#undef bool
-#undef vector
-#undef pixel
-#endif
 
 #include "SDL.h"
 #include "SDL_endian.h"
 #include "SDL_cocoavideo.h"
 #include "SDL_cocoashape.h"
+#include "SDL_cocoavulkan.h"
+#include "SDL_cocoametalview.h"
 #include "SDL_assert.h"
 
 /* Initialization/Query functions */
@@ -71,32 +66,31 @@ Cocoa_CreateDevice(int devindex)
     }
     if (!data) {
         SDL_OutOfMemory();
-        if (device) {
-            SDL_free(device);
-        }
+        SDL_free(device);
         return NULL;
     }
     device->driverdata = data;
-
-    /* Find out what version of Mac OS X we're running */
-    Gestalt(gestaltSystemVersion, &data->osversion);
 
     /* Set the function pointers */
     device->VideoInit = Cocoa_VideoInit;
     device->VideoQuit = Cocoa_VideoQuit;
     device->GetDisplayBounds = Cocoa_GetDisplayBounds;
+    device->GetDisplayUsableBounds = Cocoa_GetDisplayUsableBounds;
+    device->GetDisplayDPI = Cocoa_GetDisplayDPI;
     device->GetDisplayModes = Cocoa_GetDisplayModes;
     device->SetDisplayMode = Cocoa_SetDisplayMode;
     device->PumpEvents = Cocoa_PumpEvents;
+    device->SuspendScreenSaver = Cocoa_SuspendScreenSaver;
 
-    device->CreateWindow = Cocoa_CreateWindow;
-    device->CreateWindowFrom = Cocoa_CreateWindowFrom;
+    device->CreateSDLWindow = Cocoa_CreateWindow;
+    device->CreateSDLWindowFrom = Cocoa_CreateWindowFrom;
     device->SetWindowTitle = Cocoa_SetWindowTitle;
     device->SetWindowIcon = Cocoa_SetWindowIcon;
     device->SetWindowPosition = Cocoa_SetWindowPosition;
     device->SetWindowSize = Cocoa_SetWindowSize;
     device->SetWindowMinimumSize = Cocoa_SetWindowMinimumSize;
     device->SetWindowMaximumSize = Cocoa_SetWindowMaximumSize;
+    device->SetWindowOpacity = Cocoa_SetWindowOpacity;
     device->ShowWindow = Cocoa_ShowWindow;
     device->HideWindow = Cocoa_HideWindow;
     device->RaiseWindow = Cocoa_RaiseWindow;
@@ -104,27 +98,54 @@ Cocoa_CreateDevice(int devindex)
     device->MinimizeWindow = Cocoa_MinimizeWindow;
     device->RestoreWindow = Cocoa_RestoreWindow;
     device->SetWindowBordered = Cocoa_SetWindowBordered;
+    device->SetWindowResizable = Cocoa_SetWindowResizable;
     device->SetWindowFullscreen = Cocoa_SetWindowFullscreen;
     device->SetWindowGammaRamp = Cocoa_SetWindowGammaRamp;
     device->GetWindowGammaRamp = Cocoa_GetWindowGammaRamp;
     device->SetWindowGrab = Cocoa_SetWindowGrab;
     device->DestroyWindow = Cocoa_DestroyWindow;
     device->GetWindowWMInfo = Cocoa_GetWindowWMInfo;
-    
+    device->SetWindowHitTest = Cocoa_SetWindowHitTest;
+    device->AcceptDragAndDrop = Cocoa_AcceptDragAndDrop;
+
     device->shape_driver.CreateShaper = Cocoa_CreateShaper;
     device->shape_driver.SetWindowShape = Cocoa_SetWindowShape;
     device->shape_driver.ResizeWindowShape = Cocoa_ResizeWindowShape;
-    
+
 #if SDL_VIDEO_OPENGL_CGL
     device->GL_LoadLibrary = Cocoa_GL_LoadLibrary;
     device->GL_GetProcAddress = Cocoa_GL_GetProcAddress;
     device->GL_UnloadLibrary = Cocoa_GL_UnloadLibrary;
     device->GL_CreateContext = Cocoa_GL_CreateContext;
     device->GL_MakeCurrent = Cocoa_GL_MakeCurrent;
+    device->GL_GetDrawableSize = Cocoa_GL_GetDrawableSize;
     device->GL_SetSwapInterval = Cocoa_GL_SetSwapInterval;
     device->GL_GetSwapInterval = Cocoa_GL_GetSwapInterval;
     device->GL_SwapWindow = Cocoa_GL_SwapWindow;
     device->GL_DeleteContext = Cocoa_GL_DeleteContext;
+#elif SDL_VIDEO_OPENGL_EGL
+    device->GL_LoadLibrary = Cocoa_GLES_LoadLibrary;
+    device->GL_GetProcAddress = Cocoa_GLES_GetProcAddress;
+    device->GL_UnloadLibrary = Cocoa_GLES_UnloadLibrary;
+    device->GL_CreateContext = Cocoa_GLES_CreateContext;
+    device->GL_MakeCurrent = Cocoa_GLES_MakeCurrent;
+    device->GL_SetSwapInterval = Cocoa_GLES_SetSwapInterval;
+    device->GL_GetSwapInterval = Cocoa_GLES_GetSwapInterval;
+    device->GL_SwapWindow = Cocoa_GLES_SwapWindow;
+    device->GL_DeleteContext = Cocoa_GLES_DeleteContext;
+#endif
+
+#if SDL_VIDEO_VULKAN
+    device->Vulkan_LoadLibrary = Cocoa_Vulkan_LoadLibrary;
+    device->Vulkan_UnloadLibrary = Cocoa_Vulkan_UnloadLibrary;
+    device->Vulkan_GetInstanceExtensions = Cocoa_Vulkan_GetInstanceExtensions;
+    device->Vulkan_CreateSurface = Cocoa_Vulkan_CreateSurface;
+    device->Vulkan_GetDrawableSize = Cocoa_Vulkan_GetDrawableSize;
+#endif
+
+#if SDL_VIDEO_METAL
+    device->Metal_CreateView = Cocoa_Metal_CreateView;
+    device->Metal_DestroyView = Cocoa_Metal_DestroyView;
 #endif
 
     device->StartTextInput = Cocoa_StartTextInput;
@@ -149,18 +170,36 @@ VideoBootStrap COCOA_bootstrap = {
 int
 Cocoa_VideoInit(_THIS)
 {
+    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+
     Cocoa_InitModes(_this);
     Cocoa_InitKeyboard(_this);
-    Cocoa_InitMouse(_this);
+    if (Cocoa_InitMouse(_this) < 0) {
+        return -1;
+    }
+
+    data->allow_spaces = ((floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_6) && SDL_GetHintBoolean(SDL_HINT_VIDEO_MAC_FULLSCREEN_SPACES, SDL_TRUE));
+
+    /* The IOPM assertion API can disable the screensaver as of 10.7. */
+    data->screensaver_use_iopm = floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_6;
+
+    data->swaplock = SDL_CreateMutex();
+    if (!data->swaplock) {
+        return -1;
+    }
+
     return 0;
 }
 
 void
 Cocoa_VideoQuit(_THIS)
 {
+    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
     Cocoa_QuitModes(_this);
     Cocoa_QuitKeyboard(_this);
     Cocoa_QuitMouse(_this);
+    SDL_DestroyMutex(data->swaplock);
+    data->swaplock = NULL;
 }
 
 /* This function assumes that it's called from within an autorelease pool */
@@ -173,13 +212,7 @@ Cocoa_CreateImage(SDL_Surface * surface)
     int i;
     NSImage *img;
 
-    converted = SDL_ConvertSurfaceFormat(surface, 
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-                                         SDL_PIXELFORMAT_RGBA8888,
-#else
-                                         SDL_PIXELFORMAT_ABGR8888,
-#endif
-                                         0);
+    converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
     if (!converted) {
         return nil;
     }
@@ -225,64 +258,14 @@ Cocoa_CreateImage(SDL_Surface * surface)
  *
  * This doesn't really have aything to do with the interfaces of the SDL video
  *  subsystem, but we need to stuff this into an Objective-C source code file.
+ *
+ * NOTE: This is copypasted in src/video/uikit/SDL_uikitvideo.m! Be sure both
+ *  versions remain identical!
  */
 
 void SDL_NSLog(const char *text)
 {
     NSLog(@"%s", text);
-}
-
-/*
- * Mac OS X assertion support.
- *
- * This doesn't really have aything to do with the interfaces of the SDL video
- *  subsystem, but we need to stuff this into an Objective-C source code file.
- */
-
-SDL_assert_state
-SDL_PromptAssertion_cocoa(const SDL_assert_data *data)
-{
-    const int initialized = (SDL_WasInit(SDL_INIT_VIDEO) != 0);
-    if (!initialized) {
-        if (SDL_InitSubSystem(SDL_INIT_VIDEO) == -1) {
-            fprintf(stderr, "Assertion failed AND couldn't init video mode!\n");
-            return SDL_ASSERTION_BREAK;  /* oh well, crash hard. */
-        }
-    }
-
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-
-    NSString *msg = [NSString stringWithFormat:
-            @"Assertion failure at %s (%s:%d), triggered %u time%s:\n  '%s'",
-                data->function, data->filename, data->linenum,
-                data->trigger_count, (data->trigger_count == 1) ? "" : "s",
-                data->condition];
-
-    NSLog(@"%@", msg);
-
-    /*
-     * !!! FIXME: this code needs to deal with fullscreen modes:
-     * !!! FIXME:  reset to default desktop, runModal, reset to current?
-     */
-
-    NSAlert* alert = [[NSAlert alloc] init];
-    [alert setAlertStyle:NSCriticalAlertStyle];
-    [alert setMessageText:msg];
-    [alert addButtonWithTitle:@"Retry"];
-    [alert addButtonWithTitle:@"Break"];
-    [alert addButtonWithTitle:@"Abort"];
-    [alert addButtonWithTitle:@"Ignore"];
-    [alert addButtonWithTitle:@"Always Ignore"];
-    const NSInteger clicked = [alert runModal];
-    [alert release];
-
-    [pool release];
-
-    if (!initialized) {
-        SDL_QuitSubSystem(SDL_INIT_VIDEO);
-    }
-
-    return (SDL_assert_state) (clicked - NSAlertFirstButtonReturn);
 }
 
 #endif /* SDL_VIDEO_DRIVER_COCOA */
