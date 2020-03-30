@@ -147,6 +147,15 @@ const char * SDL_SYS_JoystickNameForDeviceIndex(int device_index)
     return "PSP builtin joypad";
 }
 
+static int SDL_SYS_JoystickGetDevicePlayerIndex(int device_index)
+{
+    return -1;
+}
+
+static void SDL_SYS_JoystickSetDevicePlayerIndex(int device_index, int player_index)
+{
+}
+
 /* Function to perform the mapping from device index to the instance id for this index */
 SDL_JoystickID SDL_SYS_GetInstanceIdOfDeviceIndex(int device_index)
 {
@@ -257,6 +266,28 @@ SDL_JoystickGUID SDL_SYS_JoystickGetGUID(SDL_Joystick * joystick)
     SDL_memcpy( &guid, name, SDL_min( sizeof(guid), SDL_strlen( name ) ) );
     return guid;
 }
+
+static int SDL_SYS_JoystickRumble(SDL_Joystick * joystick, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble)
+{
+    return SDL_Unsupported();
+}
+
+SDL_JoystickDriver SDL_PSP_JoystickDriver =
+{
+    SDL_SYS_JoystickInit,
+    SDL_SYS_NumJoysticks,
+    SDL_SYS_JoystickDetect,
+    SDL_SYS_JoystickName,
+    SDL_SYS_JoystickGetDevicePlayerIndex,
+    SDL_SYS_JoystickSetDevicePlayerIndex,
+    SDL_SYS_JoystickGetDeviceGUID,
+    SDL_SYS_GetInstanceIdOfDeviceIndex,
+    SDL_SYS_JoystickOpen,
+    SDL_SYS_JoystickRumble,
+    SDL_SYS_JoystickUpdate,
+    SDL_SYS_JoystickClose,
+    SDL_SYS_JoystickQuit,
+};
 
 #endif /* SDL_JOYSTICK_PSP */
 
