@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2013 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,13 +19,13 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "SDL_config.h"
+#include "../../SDL_internal.h"
 
 #ifndef SDL_POWER_DISABLED
 #if SDL_POWER_PSP
 
 #include "SDL_power.h"
-#include <psppower.h> 
+#include <psppower.h>
 
 
 SDL_bool
@@ -34,31 +34,31 @@ SDL_GetPowerInfo_PSP(SDL_PowerState * state, int *seconds,
 {
     int battery = scePowerIsBatteryExist();
     int plugged = scePowerIsPowerOnline();
-	int charging = scePowerIsBatteryCharging();
+    int charging = scePowerIsBatteryCharging();
 
     *state = SDL_POWERSTATE_UNKNOWN;
-	*seconds = -1;
-	*percent = -1;
-	
-	if (!battery) {
-		*state = SDL_POWERSTATE_NO_BATTERY;
-		*seconds = -1;
-    	*percent = -1;
+    *seconds = -1;
+    *percent = -1;
+
+    if (!battery) {
+        *state = SDL_POWERSTATE_NO_BATTERY;
+        *seconds = -1;
+        *percent = -1;
     } else if (charging) {
         *state = SDL_POWERSTATE_CHARGING;
-    	*percent = scePowerGetBatteryLifePercent();
-		*seconds = scePowerGetBatteryLifeTime()*60;
+        *percent = scePowerGetBatteryLifePercent();
+        *seconds = scePowerGetBatteryLifeTime()*60;
     } else if (plugged) {
         *state = SDL_POWERSTATE_CHARGED;
-    	*percent = scePowerGetBatteryLifePercent();
-		*seconds = scePowerGetBatteryLifeTime()*60;        
+        *percent = scePowerGetBatteryLifePercent();
+        *seconds = scePowerGetBatteryLifeTime()*60;
     } else {
         *state = SDL_POWERSTATE_ON_BATTERY;
-    	*percent = scePowerGetBatteryLifePercent();
-		*seconds = scePowerGetBatteryLifeTime()*60;
+        *percent = scePowerGetBatteryLifePercent();
+        *seconds = scePowerGetBatteryLifeTime()*60;
     }
 
-	
+
     return SDL_TRUE;            /* always the definitive answer on PSP. */
 }
 

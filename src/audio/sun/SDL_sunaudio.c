@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2013 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_config.h"
+#include "../../SDL_internal.h"
 
 #if SDL_AUDIO_DRIVER_SUNAUDIO
 
@@ -40,14 +40,14 @@
 
 #include "SDL_timer.h"
 #include "SDL_audio.h"
-#include "../SDL_audiomem.h"
+#include "../../core/unix/SDL_poll.h"
 #include "../SDL_audio_c.h"
 #include "../SDL_audiodev_c.h"
 #include "SDL_sunaudio.h"
 
 /* Open the audio device for playback, and don't block if busy */
 
-#if defined(AUDIO_GETINFO) && !defined(AUDIO_GETBUFINFO) 
+#if defined(AUDIO_GETINFO) && !defined(AUDIO_GETBUFINFO)
 #define AUDIO_GETBUFINFO AUDIO_GETINFO
 #endif
 
@@ -56,9 +56,9 @@ static Uint8 snd2au(int sample);
 
 /* Audio driver bootstrap functions */
 static void
-SUNAUDIO_DetectDevices(int iscapture, SDL_AddAudioDevice addfn)
+SUNAUDIO_DetectDevices(void)
 {
-    SDL_EnumUnixAudioDevices(iscapture, 1, (int (*)(int fd)) NULL, addfn);
+    SDL_EnumUnixAudioDevices(1, (int (*)(int)) NULL);
 }
 
 #ifdef DEBUG_AUDIO
@@ -82,7 +82,7 @@ static void
 SUNAUDIO_WaitDevice(_THIS)
 {
 #ifdef AUDIO_GETBUFINFO
-#define SLEEP_FUDGE	10      /* 10 ms scheduling fudge factor */
+#define SLEEP_FUDGE 10      /* 10 ms scheduling fudge factor */
     audio_info_t info;
     Sint32 left;
 
@@ -98,11 +98,7 @@ SUNAUDIO_WaitDevice(_THIS)
         }
     }
 #else
-    fd_set fdset;
-
-    FD_ZERO(&fdset);
-    FD_SET(this->hidden->audio_fd, &fdset);
-    select(this->hidden->audio_fd + 1, NULL, &fdset, NULL, NULL);
+    SDL_IOReady(this->hidden->audio_fd, SDL_TRUE, -1);
 #endif
 }
 
@@ -158,7 +154,7 @@ SUNAUDIO_PlayDevice(_THIS)
         if (write(this->hidden->audio_fd, this->hidden->ulaw_buf,
             this->hidden->fragsize) < 0) {
             /* Assume fatal error, for now */
-            this->enabled = 0;
+            SDL_OpenedAudioDeviceDisconnected(this);
         }
         this->hidden->written += this->hidden->fragsize;
     } else {
@@ -168,7 +164,7 @@ SUNAUDIO_PlayDevice(_THIS)
         if (write(this->hidden->audio_fd, this->hidden->mixbuf,
             this->spec.size) < 0) {
             /* Assume fatal error, for now */
-            this->enabled = 0;
+            SDL_OpenedAudioDeviceDisconnected(this);
         }
         this->hidden->written += this->hidden->fragsize;
     }
@@ -183,27 +179,21 @@ SUNAUDIO_GetDeviceBuf(_THIS)
 static void
 SUNAUDIO_CloseDevice(_THIS)
 {
-    if (this->hidden != NULL) {
-        if (this->hidden->mixbuf != NULL) {
-            SDL_FreeAudioMem(this->hidden->mixbuf);
-            this->hidden->mixbuf = NULL;
-        }
-        if (this->hidden->ulaw_buf != NULL) {
-            SDL_free(this->hidden->ulaw_buf);
-            this->hidden->ulaw_buf = NULL;
-        }
-        if (this->hidden->audio_fd >= 0) {
-            close(this->hidden->audio_fd);
-            this->hidden->audio_fd = -1;
-        }
-        SDL_free(this->hidden);
-        this->hidden = NULL;
+    SDL_free(this->hidden->ulaw_buf);
+    if (this->hidden->audio_fd >= 0) {
+        close(this->hidden->audio_fd);
     }
+    SDL_free(this->hidden->mixbuf);
+    SDL_free(this->hidden);
 }
 
 static int
-SUNAUDIO_OpenDevice(_THIS, const char *devname, int iscapture)
+SUNAUDIO_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
 {
+#ifdef AUDIO_SETINFO
+    int enc;
+#endif
+    int desired_freq = 0;
     const int flags = ((iscapture) ? OPEN_FLAGS_INPUT : OPEN_FLAGS_OUTPUT);
     SDL_AudioFormat format = 0;
     audio_info_t info;
@@ -213,8 +203,7 @@ SUNAUDIO_OpenDevice(_THIS, const char *devname, int iscapture)
     if (devname == NULL) {
         devname = SDL_GetAudioDeviceName(0, iscapture);
         if (devname == NULL) {
-            SDL_SetError("No such audio device");
-            return 0;
+            return SDL_SetError("No such audio device");
         }
     }
 
@@ -222,22 +211,17 @@ SUNAUDIO_OpenDevice(_THIS, const char *devname, int iscapture)
     this->hidden = (struct SDL_PrivateAudioData *)
         SDL_malloc((sizeof *this->hidden));
     if (this->hidden == NULL) {
-        SDL_OutOfMemory();
-        return 0;
+        return SDL_OutOfMemory();
     }
-    SDL_memset(this->hidden, 0, (sizeof *this->hidden));
+    SDL_zerop(this->hidden);
 
     /* Open the audio device */
     this->hidden->audio_fd = open(devname, flags, 0);
     if (this->hidden->audio_fd < 0) {
-        SDL_SetError("Couldn't open %s: %s", devname, strerror(errno));
-        return 0;
+        return SDL_SetError("Couldn't open %s: %s", devname, strerror(errno));
     }
 
-#ifdef AUDIO_SETINFO
-    int enc;
-#endif
-    int desired_freq = this->spec.freq;
+    desired_freq = this->spec.freq;
 
     /* Determine the audio parameters from the AudioSpec */
     switch (SDL_AUDIO_BITSIZE(this->spec.format)) {
@@ -263,8 +247,7 @@ SUNAUDIO_OpenDevice(_THIS, const char *devname, int iscapture)
     default:
         {
             /* !!! FIXME: fallback to conversion on unsupported types! */
-            SDL_SetError("Unsupported audio format");
-            return (-1);
+            return SDL_SetError("Unsupported audio format");
         }
     }
     this->hidden->audio_fmt = this->spec.format;
@@ -285,9 +268,8 @@ SUNAUDIO_OpenDevice(_THIS, const char *devname, int iscapture)
 
             /* Check to be sure we got what we wanted */
             if (ioctl(this->hidden->audio_fd, AUDIO_GETINFO, &info) < 0) {
-                SDL_SetError("Error getting audio parameters: %s",
-                             strerror(errno));
-                return -1;
+                return SDL_SetError("Error getting audio parameters: %s",
+                                    strerror(errno));
             }
             if (info.play.encoding == enc
                 && info.play.precision == (this->spec.format & 0xff)
@@ -316,9 +298,8 @@ SUNAUDIO_OpenDevice(_THIS, const char *devname, int iscapture)
 
         default:
             /* oh well... */
-            SDL_SetError("Error setting audio parameters: %s",
-                         strerror(errno));
-            return -1;
+            return SDL_SetError("Error setting audio parameters: %s",
+                                strerror(errno));
         }
     }
 #endif /* AUDIO_SETINFO */
@@ -332,8 +313,7 @@ SUNAUDIO_OpenDevice(_THIS, const char *devname, int iscapture)
         this->hidden->frequency = 8;
         this->hidden->ulaw_buf = (Uint8 *) SDL_malloc(this->hidden->fragsize);
         if (this->hidden->ulaw_buf == NULL) {
-            SDL_OutOfMemory();
-            return (-1);
+            return SDL_OutOfMemory();
         }
         this->spec.channels = 1;
     } else {
@@ -351,15 +331,14 @@ SUNAUDIO_OpenDevice(_THIS, const char *devname, int iscapture)
     SDL_CalculateAudioSpec(&this->spec);
 
     /* Allocate mixing buffer */
-    this->hidden->mixbuf = (Uint8 *) SDL_AllocAudioMem(this->spec.size);
+    this->hidden->mixbuf = (Uint8 *) SDL_malloc(this->spec.size);
     if (this->hidden->mixbuf == NULL) {
-        SDL_OutOfMemory();
-        return (-1);
+        return SDL_OutOfMemory();
     }
     SDL_memset(this->hidden->mixbuf, this->spec.silence, this->spec.size);
 
     /* We're ready to rock and roll. :-) */
-    return (1);
+    return 0;
 }
 
 /************************************************************************/
@@ -425,6 +404,8 @@ SUNAUDIO_Init(SDL_AudioDriverImpl * impl)
     impl->WaitDevice = SUNAUDIO_WaitDevice;
     impl->GetDeviceBuf = SUNAUDIO_GetDeviceBuf;
     impl->CloseDevice = SUNAUDIO_CloseDevice;
+
+    impl->AllowsArbitraryDeviceNames = 1;
 
     return 1; /* this audio target is available. */
 }

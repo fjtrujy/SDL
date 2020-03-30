@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2013 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_config.h"
+#include "../SDL_internal.h"
 
 #include "SDL_video.h"
 #include "SDL_blit.h"
@@ -46,6 +46,8 @@ SDL_Blit_Slow(SDL_BlitInfo * info)
     SDL_PixelFormat *dst_fmt = info->dst_fmt;
     int srcbpp = src_fmt->BytesPerPixel;
     int dstbpp = dst_fmt->BytesPerPixel;
+    Uint32 rgbmask = ~src_fmt->Amask;
+    Uint32 ckey = info->colorkey & rgbmask;
 
     srcy = 0;
     posy = 0;
@@ -54,7 +56,7 @@ SDL_Blit_Slow(SDL_BlitInfo * info)
 
     while (info->dst_h--) {
         Uint8 *src = 0;
-        Uint8 *dst = (Uint8 *) info->dst;
+        Uint8 *dst = info->dst;
         int n = info->dst_w;
         srcx = -1;
         posx = 0x10000L;
@@ -85,7 +87,7 @@ SDL_Blit_Slow(SDL_BlitInfo * info)
                     srcpixel = (srcR << src_fmt->Rshift) |
                         (srcG << src_fmt->Gshift) | (srcB << src_fmt->Bshift);
                 }
-                if (srcpixel == info->colorkey) {
+                if ((srcpixel & rgbmask) == ckey) {
                     posx += incx;
                     dst += dstbpp;
                     continue;
@@ -116,7 +118,7 @@ SDL_Blit_Slow(SDL_BlitInfo * info)
                     srcB = (srcB * srcA) / 255;
                 }
             }
-            switch (flags & (SDL_COPY_BLEND | SDL_COPY_ADD | SDL_COPY_MOD)) {
+            switch (flags & (SDL_COPY_BLEND | SDL_COPY_ADD | SDL_COPY_MOD | SDL_COPY_MUL)) {
             case 0:
                 dstR = srcR;
                 dstG = srcG;
@@ -127,6 +129,7 @@ SDL_Blit_Slow(SDL_BlitInfo * info)
                 dstR = srcR + ((255 - srcA) * dstR) / 255;
                 dstG = srcG + ((255 - srcA) * dstG) / 255;
                 dstB = srcB + ((255 - srcA) * dstB) / 255;
+                dstA = srcA + ((255 - srcA) * dstA) / 255;
                 break;
             case SDL_COPY_ADD:
                 dstR = srcR + dstR;
@@ -143,6 +146,20 @@ SDL_Blit_Slow(SDL_BlitInfo * info)
                 dstR = (srcR * dstR) / 255;
                 dstG = (srcG * dstG) / 255;
                 dstB = (srcB * dstB) / 255;
+                break;
+            case SDL_COPY_MUL:
+                dstR = ((srcR * dstR) + (dstR * (255 - srcA))) / 255;
+                if (dstR > 255)
+                    dstR = 255;
+                dstG = ((srcG * dstG) + (dstG * (255 - srcA))) / 255;
+                if (dstG > 255)
+                    dstG = 255;
+                dstB = ((srcB * dstB) + (dstB * (255 - srcA))) / 255;
+                if (dstB > 255)
+                    dstB = 255;
+                dstA = ((srcA * dstA) + (dstA * (255 - srcA))) / 255;
+                if (dstA > 255)
+                    dstA = 255;
                 break;
             }
             if (dst_fmt->Amask) {

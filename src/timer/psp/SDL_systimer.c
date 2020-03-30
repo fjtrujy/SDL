@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2013 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,6 +18,9 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+#include "../../SDL_internal.h"
+
+#ifdef SDL_TIMERS_PSP
 
 #include "SDL_thread.h"
 #include "SDL_timer.h"
@@ -29,20 +32,37 @@
 #include <pspthreadman.h>
 
 static struct timeval start;
+static SDL_bool ticks_started = SDL_FALSE;
 
-void SDL_StartTicks(void)
+void
+SDL_TicksInit(void)
 {
-	gettimeofday(&start, NULL);
+    if (ticks_started) {
+        return;
+    }
+    ticks_started = SDL_TRUE;
+
+    gettimeofday(&start, NULL);
+}
+
+void
+SDL_TicksQuit(void)
+{
+    ticks_started = SDL_FALSE;
 }
 
 Uint32 SDL_GetTicks(void)
 {
-	struct timeval now;
-	Uint32 ticks;
+    if (!ticks_started) {
+        SDL_TicksInit();
+    }
 
-	gettimeofday(&now, NULL);
-	ticks=(now.tv_sec-start.tv_sec)*1000+(now.tv_usec-start.tv_usec)/1000;
-	return(ticks);
+    struct timeval now;
+    Uint32 ticks;
+
+    gettimeofday(&now, NULL);
+    ticks=(now.tv_sec-start.tv_sec)*1000+(now.tv_usec-start.tv_usec)/1000;
+    return(ticks);
 }
 
 Uint64
@@ -59,11 +79,13 @@ SDL_GetPerformanceFrequency(void)
 
 void SDL_Delay(Uint32 ms)
 {
-	const Uint32 max_delay = 0xffffffffUL / 1000;
-	if(ms > max_delay)
-		ms = max_delay;
-	sceKernelDelayThreadCB(ms * 1000);
+    const Uint32 max_delay = 0xffffffffUL / 1000;
+    if(ms > max_delay)
+        ms = max_delay;
+    sceKernelDelayThreadCB(ms * 1000);
 }
+
+#endif /* SDL_TIMERS_PSP */
 
 /* vim: ts=4 sw=4
  */

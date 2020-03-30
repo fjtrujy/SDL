@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2013 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,7 +24,7 @@
 
 /* GIMP RGB C-Source image dump (alpha.c) */
 
-const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendAdd = {
+static const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendAdd = {
   80, 60, 3,
   "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
   "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
@@ -580,11 +580,11 @@ const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendAdd = {
  */
 SDL_Surface *SDLTest_ImageBlitBlendAdd()
 {
-   SDL_Surface *surface = SDL_CreateRGBSurfaceFrom( 
+   SDL_Surface *surface = SDL_CreateRGBSurfaceFrom(
         (void*)SDLTest_imageBlitBlendAdd.pixel_data,
-        SDLTest_imageBlitBlendAdd.width, 
-        SDLTest_imageBlitBlendAdd.height, 
-        SDLTest_imageBlitBlendAdd.bytes_per_pixel * 8, 
+        SDLTest_imageBlitBlendAdd.width,
+        SDLTest_imageBlitBlendAdd.height,
+        SDLTest_imageBlitBlendAdd.bytes_per_pixel * 8,
         SDLTest_imageBlitBlendAdd.width * SDLTest_imageBlitBlendAdd.bytes_per_pixel,
 #if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
          0xff000000, /* Red bit mask. */
@@ -601,7 +601,7 @@ SDL_Surface *SDLTest_ImageBlitBlendAdd()
    return surface;
 }
 
-const SDLTest_SurfaceImage_t SDLTest_imageBlitBlend = {
+static const SDLTest_SurfaceImage_t SDLTest_imageBlitBlend = {
   80, 60, 3,
   "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
   "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
@@ -1110,11 +1110,11 @@ const SDLTest_SurfaceImage_t SDLTest_imageBlitBlend = {
  */
 SDL_Surface *SDLTest_ImageBlitBlend()
 {
-   SDL_Surface *surface = SDL_CreateRGBSurfaceFrom( 
+   SDL_Surface *surface = SDL_CreateRGBSurfaceFrom(
         (void*)SDLTest_imageBlitBlend.pixel_data,
-        SDLTest_imageBlitBlend.width, 
-        SDLTest_imageBlitBlend.height, 
-        SDLTest_imageBlitBlend.bytes_per_pixel * 8, 
+        SDLTest_imageBlitBlend.width,
+        SDLTest_imageBlitBlend.height,
+        SDLTest_imageBlitBlend.bytes_per_pixel * 8,
         SDLTest_imageBlitBlend.width * SDLTest_imageBlitBlend.bytes_per_pixel,
 #if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
          0xff000000, /* Red bit mask. */
@@ -1131,7 +1131,7 @@ SDL_Surface *SDLTest_ImageBlitBlend()
    return surface;
 }
 
-const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendMod = {
+static const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendMod = {
   80, 60, 3,
   "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
   "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
@@ -1540,11 +1540,11 @@ const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendMod = {
  */
 SDL_Surface *SDLTest_ImageBlitBlendMod()
 {
-   SDL_Surface *surface = SDL_CreateRGBSurfaceFrom( 
+   SDL_Surface *surface = SDL_CreateRGBSurfaceFrom(
         (void*)SDLTest_imageBlitBlendMod.pixel_data,
-        SDLTest_imageBlitBlendMod.width, 
-        SDLTest_imageBlitBlendMod.height, 
-        SDLTest_imageBlitBlendMod.bytes_per_pixel * 8, 
+        SDLTest_imageBlitBlendMod.width,
+        SDLTest_imageBlitBlendMod.height,
+        SDLTest_imageBlitBlendMod.bytes_per_pixel * 8,
         SDLTest_imageBlitBlendMod.width * SDLTest_imageBlitBlendMod.bytes_per_pixel,
 #if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
          0xff000000, /* Red bit mask. */
@@ -1561,7 +1561,7 @@ SDL_Surface *SDLTest_ImageBlitBlendMod()
    return surface;
 }
 
-const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendNone = {
+static const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendNone = {
   80, 60, 3,
   "\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377"
   "\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377"
@@ -2353,11 +2353,11 @@ const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendNone = {
  */
 SDL_Surface *SDLTest_ImageBlitBlendNone()
 {
-   SDL_Surface *surface = SDL_CreateRGBSurfaceFrom( 
+   SDL_Surface *surface = SDL_CreateRGBSurfaceFrom(
         (void*)SDLTest_imageBlitBlendNone.pixel_data,
-        SDLTest_imageBlitBlendNone.width, 
-        SDLTest_imageBlitBlendNone.height, 
-        SDLTest_imageBlitBlendNone.bytes_per_pixel * 8, 
+        SDLTest_imageBlitBlendNone.width,
+        SDLTest_imageBlitBlendNone.height,
+        SDLTest_imageBlitBlendNone.bytes_per_pixel * 8,
         SDLTest_imageBlitBlendNone.width * SDLTest_imageBlitBlendNone.bytes_per_pixel,
 #if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
          0xff000000, /* Red bit mask. */
@@ -2374,7 +2374,7 @@ SDL_Surface *SDLTest_ImageBlitBlendNone()
    return surface;
 }
 
-const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendAll = {
+static const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendAll = {
   80, 60, 3,
   "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
   "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
@@ -2821,11 +2821,11 @@ const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendAll = {
  */
 SDL_Surface *SDLTest_ImageBlitBlendAll()
 {
-   SDL_Surface *surface = SDL_CreateRGBSurfaceFrom( 
+   SDL_Surface *surface = SDL_CreateRGBSurfaceFrom(
         (void*)SDLTest_imageBlitBlendAll.pixel_data,
-        SDLTest_imageBlitBlendAll.width, 
-        SDLTest_imageBlitBlendAll.height, 
-        SDLTest_imageBlitBlendAll.bytes_per_pixel * 8, 
+        SDLTest_imageBlitBlendAll.width,
+        SDLTest_imageBlitBlendAll.height,
+        SDLTest_imageBlitBlendAll.bytes_per_pixel * 8,
         SDLTest_imageBlitBlendAll.width * SDLTest_imageBlitBlendAll.bytes_per_pixel,
 #if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
          0xff000000, /* Red bit mask. */
@@ -2841,3 +2841,5 @@ SDL_Surface *SDLTest_ImageBlitBlendAll()
          );
    return surface;
 }
+
+/* vi: set ts=4 sw=4 expandtab: */

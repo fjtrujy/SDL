@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2013 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -22,7 +22,7 @@
 /*
 
  Based on automated SDL_Surface tests originally written by Edgar Simo 'bobbens'.
- 
+
  Rewritten for test lib by Andreas Schiffler.
 
 */
@@ -43,6 +43,7 @@ int SDLTest_CompareSurfaces(SDL_Surface *surface, SDL_Surface *referenceSurface,
    int bpp, bpp_reference;
    Uint8 *p, *p_reference;
    int dist;
+   int sampleErrorX = 0, sampleErrorY = 0, sampleDist = 0;
    Uint8 R, G, B, A;
    Uint8 Rd, Gd, Bd, Ad;
    char imageFilename[128];
@@ -62,7 +63,7 @@ int SDLTest_CompareSurfaces(SDL_Surface *surface, SDL_Surface *referenceSurface,
    if (allowable_error<0) {
       allowable_error = 0;
    }
-   
+
    SDL_LockSurface( surface );
    SDL_LockSurface( referenceSurface );
 
@@ -82,10 +83,15 @@ int SDLTest_CompareSurfaces(SDL_Surface *surface, SDL_Surface *referenceSurface,
          dist += (R-Rd)*(R-Rd);
          dist += (G-Gd)*(G-Gd);
          dist += (B-Bd)*(B-Bd);
-                  
+
          /* Allow some difference in blending accuracy */
          if (dist > allowable_error) {
             ret++;
+            if (ret == 1) {
+               sampleErrorX = i;
+               sampleErrorY = j;
+               sampleDist = dist;
+            }
          }
       }
    }
@@ -96,6 +102,8 @@ int SDLTest_CompareSurfaces(SDL_Surface *surface, SDL_Surface *referenceSurface,
    /* Save test image and reference for analysis on failures */
    _CompareSurfaceCount++;
    if (ret != 0) {
+      SDLTest_LogError("Comparison of pixels with allowable error of %i failed %i times.", allowable_error, ret);
+      SDLTest_LogError("First detected occurrence at position %i,%i with a squared RGB-difference of %i.", sampleErrorX, sampleErrorY, sampleDist); 
       SDL_snprintf(imageFilename, 127, "CompareSurfaces%04d_TestOutput.bmp", _CompareSurfaceCount);
       SDL_SaveBMP(surface, imageFilename);
       SDL_snprintf(referenceFilename, 127, "CompareSurfaces%04d_Reference.bmp", _CompareSurfaceCount);
@@ -105,3 +113,5 @@ int SDLTest_CompareSurfaces(SDL_Surface *surface, SDL_Surface *referenceSurface,
 
    return ret;
 }
+
+/* vi: set ts=4 sw=4 expandtab: */

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2013 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,7 +19,8 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "SDL_config.h"
+#include "../../SDL_internal.h"
+#include "SDL_system.h"
 
 #include <pthread.h>
 
@@ -34,7 +35,10 @@
 #include <sys/resource.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#endif // __LINUX__
+#include <errno.h>
+
+#include "../../core/linux/SDL_dbus.h"
+#endif /* __LINUX__ */
 
 #if defined(__LINUX__) || defined(__MACOSX__) || defined(__IPHONEOS__)
 #include <dlfcn.h>
@@ -43,6 +47,7 @@
 #endif
 #endif
 
+#include "SDL_log.h"
 #include "SDL_platform.h"
 #include "SDL_thread.h"
 #include "../SDL_thread_c.h"
@@ -51,14 +56,19 @@
 #include "../../core/android/SDL_android.h"
 #endif
 
+#ifdef __HAIKU__
+#include <kernel/OS.h>
+#endif
+
 #include "SDL_assert.h"
 
+#ifndef __NACL__
 /* List of signals to mask in the subthreads */
 static const int sig_list[] = {
     SIGHUP, SIGINT, SIGQUIT, SIGPIPE, SIGALRM, SIGTERM, SIGCHLD, SIGWINCH,
     SIGVTALRM, SIGPROF, 0
 };
-
+#endif
 
 static void *
 RunThread(void *data)
@@ -97,25 +107,30 @@ SDL_SYS_CreateThread(SDL_Thread * thread, void *args)
 
     /* Set the thread attributes */
     if (pthread_attr_init(&type) != 0) {
-        SDL_SetError("Couldn't initialize pthread attributes");
-        return (-1);
+        return SDL_SetError("Couldn't initialize pthread attributes");
     }
     pthread_attr_setdetachstate(&type, PTHREAD_CREATE_JOINABLE);
+    
+    /* Set caller-requested stack size. Otherwise: use the system default. */
+    if (thread->stacksize) {
+        pthread_attr_setstacksize(&type, thread->stacksize);
+    }
 
     /* Create the thread and go! */
     if (pthread_create(&thread->handle, &type, RunThread, args) != 0) {
-        SDL_SetError("Not enough resources to create thread");
-        return (-1);
+        return SDL_SetError("Not enough resources to create thread");
     }
 
-    return (0);
+    return 0;
 }
 
 void
 SDL_SYS_SetupThread(const char *name)
 {
+#if !defined(__NACL__)
     int i;
     sigset_t mask;
+#endif /* !__NACL__ */
 
     if (name != NULL) {
         #if defined(__MACOSX__) || defined(__IPHONEOS__) || defined(__LINUX__)
@@ -128,18 +143,32 @@ SDL_SYS_SetupThread(const char *name)
             #endif
         }
         #elif HAVE_PTHREAD_SETNAME_NP
+            #if defined(__NETBSD__)
+            pthread_setname_np(pthread_self(), "%s", name);
+            #else
             pthread_setname_np(pthread_self(), name);
+            #endif
         #elif HAVE_PTHREAD_SET_NAME_NP
             pthread_set_name_np(pthread_self(), name);
+        #elif defined(__HAIKU__)
+            /* The docs say the thread name can't be longer than B_OS_NAME_LENGTH. */
+            char namebuf[B_OS_NAME_LENGTH];
+            SDL_snprintf(namebuf, sizeof (namebuf), "%s", name);
+            namebuf[sizeof (namebuf) - 1] = '\0';
+            rename_thread(find_thread(NULL), namebuf);
         #endif
     }
 
+   /* NativeClient does not yet support signals.*/
+#if !defined(__NACL__)
     /* Mask asynchronous signals for this thread */
     sigemptyset(&mask);
     for (i = 0; sig_list[i]; ++i) {
         sigaddset(&mask, sig_list[i]);
     }
     pthread_sigmask(SIG_BLOCK, &mask, 0);
+#endif /* !__NACL__ */
+
 
 #ifdef PTHREAD_CANCEL_ASYNCHRONOUS
     /* Allow ourselves to be asynchronously cancelled */
@@ -159,45 +188,45 @@ SDL_ThreadID(void)
 int
 SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
 {
-#ifdef __LINUX__
+#if __NACL__ || __RISCOS__
+    /* FIXME: Setting thread priority does not seem to be supported in NACL */
+    return 0;
+#elif __LINUX__
     int value;
+    pid_t thread = syscall(SYS_gettid);
 
     if (priority == SDL_THREAD_PRIORITY_LOW) {
         value = 19;
     } else if (priority == SDL_THREAD_PRIORITY_HIGH) {
+        value = -10;
+    } else if (priority == SDL_THREAD_PRIORITY_TIME_CRITICAL) {
         value = -20;
     } else {
         value = 0;
     }
-    if (setpriority(PRIO_PROCESS, syscall(SYS_gettid), value) < 0) {
-        /* Note that this fails if you're trying to set high priority
-           and you don't have root permission. BUT DON'T RUN AS ROOT!
-         */
-        SDL_SetError("setpriority() failed");
-        return -1;
-    }
-    return 0;
+    return SDL_LinuxSetThreadPriority(thread, value);
 #else
     struct sched_param sched;
     int policy;
     pthread_t thread = pthread_self();
 
-    if (pthread_getschedparam(thread, &policy, &sched) < 0) {
-        SDL_SetError("pthread_getschedparam() failed");
-        return -1;
+    if (pthread_getschedparam(thread, &policy, &sched) != 0) {
+        return SDL_SetError("pthread_getschedparam() failed");
     }
     if (priority == SDL_THREAD_PRIORITY_LOW) {
         sched.sched_priority = sched_get_priority_min(policy);
-    } else if (priority == SDL_THREAD_PRIORITY_HIGH) {
+    } else if (priority == SDL_THREAD_PRIORITY_TIME_CRITICAL) {
         sched.sched_priority = sched_get_priority_max(policy);
     } else {
         int min_priority = sched_get_priority_min(policy);
         int max_priority = sched_get_priority_max(policy);
         sched.sched_priority = (min_priority + (max_priority - min_priority) / 2);
+        if (priority == SDL_THREAD_PRIORITY_HIGH) {
+            sched.sched_priority += ((max_priority - min_priority) / 4);
+        }
     }
-    if (pthread_setschedparam(thread, policy, &sched) < 0) {
-        SDL_SetError("pthread_setschedparam() failed");
-        return -1;
+    if (pthread_setschedparam(thread, policy, &sched) != 0) {
+        return SDL_SetError("pthread_setschedparam() failed");
     }
     return 0;
 #endif /* linux */
@@ -207,6 +236,12 @@ void
 SDL_SYS_WaitThread(SDL_Thread * thread)
 {
     pthread_join(thread->handle, 0);
+}
+
+void
+SDL_SYS_DetachThread(SDL_Thread * thread)
+{
+    pthread_detach(thread->handle);
 }
 
 /* vi: set ts=4 sw=4 expandtab: */
