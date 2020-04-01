@@ -34,6 +34,7 @@
 #include "SDL_keyboard.h"
 #include "../../thread/SDL_systhread.h"
 #include <psphprm.h>
+#include <pspkerneltypes.h>
 
 #ifdef PSPIRKEYB
 #include <pspirkeyb.h>
