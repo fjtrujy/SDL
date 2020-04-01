@@ -712,7 +712,6 @@ static int
 PSP_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *cmd, void *vertices, size_t vertsize)
 {
     PSP_RenderData *data = (PSP_RenderData *) renderer->driverdata;
-    size_t i;
 
     StartDrawing(renderer);
 
