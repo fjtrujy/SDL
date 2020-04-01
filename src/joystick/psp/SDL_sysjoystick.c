@@ -103,7 +103,7 @@ int JoystickUpdate(void *data)
  * Joystick 0 should be the system default joystick.
  * It should return number of joysticks, or -1 on an unrecoverable fatal error.
  */
-int SDL_SYS_JoystickInit(void)
+int PSP_JoystickInit(void)
 {
     int i;
 
@@ -132,38 +132,38 @@ int SDL_SYS_JoystickInit(void)
     return 1;
 }
 
-int SDL_SYS_NumJoysticks(void)
+int PSP_NumJoysticks(void)
 {
     return 1;
 }
 
-void SDL_SYS_JoystickDetect(void)
+void PSP_JoystickDetect(void)
 {
 }
 
 /* Function to get the device-dependent name of a joystick */
-const char * SDL_SYS_JoystickNameForDeviceIndex(int device_index)
+const char * PSP_JoystickNameForDeviceIndex(int device_index)
 {
     return "PSP builtin joypad";
 }
 
-static int SDL_SYS_JoystickGetDevicePlayerIndex(int device_index)
+static int PSP_JoystickGetDevicePlayerIndex(int device_index)
 {
     return -1;
 }
 
-static void SDL_SYS_JoystickSetDevicePlayerIndex(int device_index, int player_index)
+static void PSP_JoystickSetDevicePlayerIndex(int device_index, int player_index)
 {
 }
 
 /* Function to perform the mapping from device index to the instance id for this index */
-SDL_JoystickID SDL_SYS_GetInstanceIdOfDeviceIndex(int device_index)
+SDL_JoystickID PSP_GetInstanceIdOfDeviceIndex(int device_index)
 {
     return device_index;
 }
 
 /* Function to get the device-dependent name of a joystick */
-const char *SDL_SYS_JoystickName(int index)
+const char *PSP_JoystickName(int index)
 {
     if (index == 0)
         return "PSP controller";
@@ -177,7 +177,7 @@ const char *SDL_SYS_JoystickName(int index)
    This should fill the nbuttons and naxes fields of the joystick structure.
    It returns 0, or -1 if there is an error.
  */
-int SDL_SYS_JoystickOpen(SDL_Joystick *joystick, int device_index)
+int PSP_JoystickOpen(SDL_Joystick *joystick, int device_index)
 {
     joystick->nbuttons = 14;
     joystick->naxes = 2;
@@ -191,7 +191,7 @@ int SDL_SYS_JoystickOpen(SDL_Joystick *joystick, int device_index)
  * but instead should call SDL_PrivateJoystick*() to deliver events
  * and update joystick device state.
  */
-void SDL_SYS_JoystickUpdate(SDL_Joystick *joystick)
+void PSP_JoystickUpdate(SDL_Joystick *joystick)
 {
     int i;
     enum PspCtrlButtons buttons;
@@ -234,12 +234,12 @@ void SDL_SYS_JoystickUpdate(SDL_Joystick *joystick)
 }
 
 /* Function to close a joystick after use */
-void SDL_SYS_JoystickClose(SDL_Joystick *joystick)
+void PSP_JoystickClose(SDL_Joystick *joystick)
 {
 }
 
 /* Function to perform any system-specific joystick related cleanup */
-void SDL_SYS_JoystickQuit(void)
+void PSP_JoystickQuit(void)
 {
     /* Cleanup Threads and Semaphore. */
     running = 0;
@@ -247,17 +247,17 @@ void SDL_SYS_JoystickQuit(void)
     SDL_DestroySemaphore(pad_sem);
 }
 
-SDL_JoystickGUID SDL_SYS_JoystickGetDeviceGUID( int device_index )
+SDL_JoystickGUID PSP_JoystickGetDeviceGUID( int device_index )
 {
     SDL_JoystickGUID guid;
     /* the GUID is just the first 16 chars of the name for now */
-    const char *name = SDL_SYS_JoystickNameForDeviceIndex( device_index );
+    const char *name = PSP_JoystickNameForDeviceIndex( device_index );
     SDL_zero( guid );
     SDL_memcpy( &guid, name, SDL_min( sizeof(guid), SDL_strlen( name ) ) );
     return guid;
 }
 
-SDL_JoystickGUID SDL_SYS_JoystickGetGUID(SDL_Joystick * joystick)
+SDL_JoystickGUID PSP_JoystickGetGUID(SDL_Joystick * joystick)
 {
     SDL_JoystickGUID guid;
     /* the GUID is just the first 16 chars of the name for now */
@@ -267,26 +267,26 @@ SDL_JoystickGUID SDL_SYS_JoystickGetGUID(SDL_Joystick * joystick)
     return guid;
 }
 
-static int SDL_SYS_JoystickRumble(SDL_Joystick * joystick, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble)
+static int PSP_JoystickRumble(SDL_Joystick * joystick, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble)
 {
     return SDL_Unsupported();
 }
 
 SDL_JoystickDriver SDL_PSP_JoystickDriver =
 {
-    SDL_SYS_JoystickInit,
-    SDL_SYS_NumJoysticks,
-    SDL_SYS_JoystickDetect,
-    SDL_SYS_JoystickName,
-    SDL_SYS_JoystickGetDevicePlayerIndex,
-    SDL_SYS_JoystickSetDevicePlayerIndex,
-    SDL_SYS_JoystickGetDeviceGUID,
-    SDL_SYS_GetInstanceIdOfDeviceIndex,
-    SDL_SYS_JoystickOpen,
-    SDL_SYS_JoystickRumble,
-    SDL_SYS_JoystickUpdate,
-    SDL_SYS_JoystickClose,
-    SDL_SYS_JoystickQuit,
+    PSP_JoystickInit,
+    PSP_NumJoysticks,
+    PSP_JoystickDetect,
+    PSP_JoystickName,
+    PSP_JoystickGetDevicePlayerIndex,
+    PSP_JoystickSetDevicePlayerIndex,
+    PSP_JoystickGetDeviceGUID,
+    PSP_GetInstanceIdOfDeviceIndex,
+    PSP_JoystickOpen,
+    PSP_JoystickRumble,
+    PSP_JoystickUpdate,
+    PSP_JoystickClose,
+    PSP_JoystickQuit,
 };
 
 #endif /* SDL_JOYSTICK_PSP */
