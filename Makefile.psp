@@ -77,13 +77,15 @@ OBJS= src/SDL.o \
       src/video/SDL_stretch.o \
       src/video/SDL_surface.o \
       src/video/SDL_video.o \
+      src/video/SDL_yuv.o \
+      src/video/yuv2rgb/yuv_rgb.o \
       src/video/psp/SDL_pspevents.o \
       src/video/psp/SDL_pspvideo.o \
       src/video/psp/SDL_pspgl.o \
       src/video/psp/SDL_pspmouse.o
 
 INCDIR = ./include
-CFLAGS = -g -O2 -G0 -Wall -D__PSP__ -DHAVE_OPENGL -DSDL_HAVE_YUV=0
+CFLAGS = -g -O2 -G0 -Wall -D__PSP__ -DHAVE_OPENGL
 CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti
 ASFLAGS = $(CFLAGS)
 
