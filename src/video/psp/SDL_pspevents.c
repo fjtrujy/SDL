@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2018 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -33,8 +33,8 @@
 #include "SDL_pspevents_c.h"
 #include "SDL_keyboard.h"
 #include "../../thread/SDL_systhread.h"
-#include <psphprm.h>
 #include <pspthreadman.h>
+#include <psphprm.h>
 
 #ifdef PSPIRKEYB
 #include <pspirkeyb.h>
@@ -99,7 +99,7 @@ void PSP_PumpEvents(_THIS)
                 SDL_PrivateKeyboard((keys & keymap_psp[i].id) ?
                             SDL_PRESSED : SDL_RELEASED,
                             &sym);
-                */
+        */
                 SDL_SendKeyboardKey((keys & keymap_psp[i].id) ?
                                     SDL_PRESSED : SDL_RELEASED, SDL_GetScancodeFromKey(keymap_psp[i].sym));
             }
@@ -120,8 +120,7 @@ void PSP_PumpEvents(_THIS)
                         scanData=(SIrKeybScanCodeData*) buffer+i;
                         raw = scanData->raw;
                         pressed = scanData->pressed;
-
-                /* not tested
+                 /* not tested
                 sym.scancode = raw;
                 sym.sym = keymap[raw];
                 SDL_PrivateKeyboard(pressed?SDL_PRESSED:SDL_RELEASED, &sym); */

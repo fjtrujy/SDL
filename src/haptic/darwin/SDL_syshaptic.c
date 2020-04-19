@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2018 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -599,9 +599,6 @@ SDL_SYS_HapticMouse(void)
 int
 SDL_SYS_JoystickIsHaptic(SDL_Joystick * joystick)
 {
-    if (joystick->driver != &SDL_DARWIN_JoystickDriver) {
-        return SDL_FALSE;
-    }
     if (joystick->hwdata->ffservice != 0) {
         return SDL_TRUE;
     }
@@ -615,9 +612,6 @@ SDL_SYS_JoystickIsHaptic(SDL_Joystick * joystick)
 int
 SDL_SYS_JoystickSameHaptic(SDL_Haptic * haptic, SDL_Joystick * joystick)
 {
-    if (joystick->driver != &SDL_DARWIN_JoystickDriver) {
-        return 0;
-    }
     if (IOObjectIsEqualTo((io_object_t) ((size_t)haptic->hwdata->device),
                           joystick->hwdata->ffservice)) {
         return 1;
@@ -634,10 +628,7 @@ SDL_SYS_HapticOpenFromJoystick(SDL_Haptic * haptic, SDL_Joystick * joystick)
 {
     int device_index = 0;
     SDL_hapticlist_item *item;
-    
-    if (joystick->driver != &SDL_DARWIN_JoystickDriver) {
-        return -1;
-    }
+
     for (item = SDL_hapticlist; item; item = item->next) {
         if (IOObjectIsEqualTo((io_object_t) item->dev,
                              joystick->hwdata->ffservice)) {
