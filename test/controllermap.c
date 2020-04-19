@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2018 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,9 +20,6 @@
 #include "SDL.h"
 
 #ifndef SDL_JOYSTICK_DISABLED
-
-/* Define this for verbose output while mapping controllers */
-#define DEBUG_CONTROLLERMAP
 
 #ifdef __IPHONEOS__
 #define SCREEN_WIDTH    320
@@ -143,7 +140,6 @@ static SDL_GameControllerExtendedBind s_arrBindings[BINDING_COUNT];
 typedef struct
 {
     SDL_bool m_bMoving;
-    int m_nLastValue;
     int m_nStartingValue;
     int m_nFarthestValue;
 } AxisState;
@@ -367,6 +363,7 @@ WatchJoystick(SDL_Joystick * joystick)
     Uint8 alpha=200, alpha_step = -1;
     Uint32 alpha_ticks = 0;
     SDL_JoystickID nJoystickID;
+    int iIndex;
 
     /* Create a window to display joystick axis position */
     window = SDL_CreateWindow("Game Controller Map", SDL_WINDOWPOS_CENTERED,
@@ -413,11 +410,13 @@ WatchJoystick(SDL_Joystick * joystick)
 
     s_nNumAxes = SDL_JoystickNumAxes(joystick);
     s_arrAxisState = (AxisState *)SDL_calloc(s_nNumAxes, sizeof(*s_arrAxisState));
-
-	/* Skip any spurious events at start */
-	while (SDL_PollEvent(&event) > 0) {
-		continue;
-	}
+    for (iIndex = 0; iIndex < s_nNumAxes; ++iIndex) {
+        AxisState *pAxisState = &s_arrAxisState[iIndex];
+        Sint16 nInitialValue;
+        pAxisState->m_bMoving = SDL_JoystickGetAxisInitialState(joystick, iIndex, &nInitialValue);
+        pAxisState->m_nStartingValue = nInitialValue;
+        pAxisState->m_nFarthestValue = nInitialValue;
+    }
 
     /* Loop, getting joystick events! */
     while (!done && !s_bBindingComplete) {
@@ -466,20 +465,13 @@ WatchJoystick(SDL_Joystick * joystick)
                 break;
             case SDL_JOYAXISMOTION:
                 if (event.jaxis.which == nJoystickID) {
-                    const int MAX_ALLOWED_JITTER = SDL_JOYSTICK_AXIS_MAX / 80;  /* ShanWan PS3 controller needed 96 */
                     AxisState *pAxisState = &s_arrAxisState[event.jaxis.axis];
                     int nValue = event.jaxis.value;
                     int nCurrentDistance, nFarthestDistance;
                     if (!pAxisState->m_bMoving) {
-                        Sint16 nInitialValue;
-                        pAxisState->m_bMoving = SDL_JoystickGetAxisInitialState(joystick, event.jaxis.axis, &nInitialValue);
-                        pAxisState->m_nLastValue = nInitialValue;
-                        pAxisState->m_nStartingValue = nInitialValue;
-                        pAxisState->m_nFarthestValue = nInitialValue;
-                    } else if (SDL_abs(nValue - pAxisState->m_nLastValue) <= MAX_ALLOWED_JITTER) {
-                        break;
-                    } else {
-                        pAxisState->m_nLastValue = nValue;
+                        pAxisState->m_bMoving = SDL_TRUE;
+                        pAxisState->m_nStartingValue = nValue;
+                        pAxisState->m_nFarthestValue = nValue;
                     }
                     nCurrentDistance = SDL_abs(nValue - pAxisState->m_nStartingValue);
                     nFarthestDistance = SDL_abs(pAxisState->m_nFarthestValue - pAxisState->m_nStartingValue);
@@ -781,7 +773,7 @@ int
 main(int argc, char *argv[])
 {
     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL compiled without Joystick support.\n");
-    return 1;
+    exit(1);
 }
 
 #endif

@@ -74,8 +74,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/lib*.la
 %{_libdir}/lib*.%{__soext}
 %{_includedir}/*/*.h
-%{_libdir}/cmake/*
-%{_libdir}/pkgconfig/SDL2/*
+%{_libdir}/pkgconfig/*
 %{_datadir}/aclocal/*
 
 %changelog

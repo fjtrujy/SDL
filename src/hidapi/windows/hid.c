@@ -17,7 +17,7 @@
  files located at the root of the source distribution.
  These files may also be found in the public source
  code repository located at:
-        https://github.com/libusb/hidapi .
+        http://github.com/signal11/hidapi .
 ********************************************************/
 #include "../../SDL_internal.h"
 
@@ -62,11 +62,6 @@ typedef LONG NTSTATUS;
 #define MAX_STRING_WCHARS 0xFFF
 
 /*#define HIDAPI_USE_DDK*/
-
-/* The timeout in milliseconds for waiting on WriteFile to 
-   complete in hid_write. The longest observed time to do a output
-   report that we've seen is ~200-250ms so let's double that */
-#define HID_WRITE_TIMEOUT_MILLISECONDS 500
 
 #ifdef __cplusplus
 extern "C" {
@@ -168,7 +163,6 @@ struct hid_device_ {
 		BOOL read_pending;
 		char *read_buf;
 		OVERLAPPED ol;
-		OVERLAPPED write_ol;
 };
 
 static hid_device *new_hid_device()
@@ -184,8 +178,6 @@ static hid_device *new_hid_device()
 	dev->read_buf = NULL;
 	memset(&dev->ol, 0, sizeof(dev->ol));
 	dev->ol.hEvent = CreateEvent(NULL, FALSE, FALSE /*initial state f=nonsignaled*/, NULL);
-	memset(&dev->write_ol, 0, sizeof(dev->write_ol));
-	dev->write_ol.hEvent = CreateEvent(NULL, FALSE, FALSE /*initial state f=nonsignaled*/, NULL);
 
 	return dev;
 }
@@ -193,7 +185,6 @@ static hid_device *new_hid_device()
 static void free_hid_device(hid_device *dev)
 {
 	CloseHandle(dev->ol.hEvent);
-	CloseHandle(dev->write_ol.hEvent);
 	CloseHandle(dev->device_handle);
 	LocalFree(dev->last_error_str);
 	free(dev->read_buf);
@@ -305,29 +296,6 @@ int HID_API_EXPORT hid_exit(void)
 	return 0;
 }
 
-int hid_blacklist(unsigned short vendor_id, unsigned short product_id)
-{
-	// Corsair Gaming keyboard - Causes deadlock when asking for device details
-	if ( vendor_id == 0x1B1C && product_id == 0x1B3D )
-	{
-		return 1;
-	}
-
-	// SPEEDLINK COMPETITION PRO - turns into an Android controller when enumerated
-	if ( vendor_id == 0x0738 && product_id == 0x2217 )
-	{
-		return 1;
-	}
-
-	// Sound BlasterX G1 - Causes 10 second stalls when asking for manufacturer's string
-	if ( vendor_id == 0x041E && product_id == 0x3249 )
-	{
-		return 1;
-	}
-
-	return 0;
-}
-
 struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned short vendor_id, unsigned short product_id)
 {
 	BOOL res;
@@ -341,6 +309,7 @@ struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned shor
 	SP_DEVICE_INTERFACE_DETAIL_DATA_A *device_interface_detail_data = NULL;
 	HDEVINFO device_info_set = INVALID_HANDLE_VALUE;
 	int device_index = 0;
+	int i;
 
 	if (hid_init() < 0)
 		return NULL;
@@ -404,16 +373,12 @@ struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned shor
 
 		/* Make sure this device is of Setup Class "HIDClass" and has a
 		   driver bound to it. */
-		/* In the main HIDAPI tree this is a loop which will erroneously open 
-			devices that aren't HID class. Please preserve this delta if we ever
-			update to take new changes */
-		{
+		for (i = 0; ; i++) {
 			char driver_name[256];
 
 			/* Populate devinfo_data. This function will return failure
 			   when there are no more interfaces left. */
-			res = SetupDiEnumDeviceInfo(device_info_set, device_index, &devinfo_data);
-
+			res = SetupDiEnumDeviceInfo(device_info_set, i, &devinfo_data);
 			if (!res)
 				goto cont;
 
@@ -426,12 +391,8 @@ struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned shor
 				/* See if there's a driver bound. */
 				res = SetupDiGetDeviceRegistryPropertyA(device_info_set, &devinfo_data,
 				           SPDRP_DRIVER, NULL, (PBYTE)driver_name, sizeof(driver_name), NULL);
-				if (!res)
-					goto cont;
-			}
-			else
-			{
-				goto cont;
+				if (res)
+					break;
 			}
 		}
 
@@ -456,8 +417,7 @@ struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned shor
 		/* Check the VID/PID to see if we should add this
 		   device to the enumeration list. */
 		if ((vendor_id == 0x0 || attrib.VendorID == vendor_id) &&
-		    (product_id == 0x0 || attrib.ProductID == product_id) &&
-			!hid_blacklist(attrib.VendorID, attrib.ProductID)) {
+		    (product_id == 0x0 || attrib.ProductID == product_id)) {
 
 			#define WSTR_LEN 512
 			const char *str;
@@ -687,12 +647,14 @@ int HID_API_EXPORT HID_API_CALL hid_write_output_report(hid_device *dev, const u
 		return -1;
 }
 
-static int hid_write_timeout(hid_device *dev, const unsigned char *data, size_t length, int milliseconds)
+int HID_API_EXPORT HID_API_CALL hid_write(hid_device *dev, const unsigned char *data, size_t length)
 {
 	DWORD bytes_written;
 	BOOL res;
 	size_t stashed_length = length;
+	OVERLAPPED ol;
 	unsigned char *buf;
+	memset(&ol, 0, sizeof(ol));
 
 	/* Make sure the right number of bytes are passed to WriteFile. Windows
 	   expects the number of bytes which are in the _longest_ report (plus
@@ -717,7 +679,7 @@ static int hid_write_timeout(hid_device *dev, const unsigned char *data, size_t 
 	}
 	else
 	{
-		res = WriteFile( dev->device_handle, buf, ( DWORD ) length, NULL, &dev->write_ol );
+		res = WriteFile( dev->device_handle, buf, ( DWORD ) length, NULL, &ol );
 		if (!res) {
 			if (GetLastError() != ERROR_IO_PENDING) {
 				/* WriteFile() failed. Return error. */
@@ -729,16 +691,7 @@ static int hid_write_timeout(hid_device *dev, const unsigned char *data, size_t 
 
 		/* Wait here until the write is done. This makes
 		hid_write() synchronous. */
-		res = WaitForSingleObject(dev->write_ol.hEvent, milliseconds);
-		if (res != WAIT_OBJECT_0)
-		{
-			// There was a Timeout.
-			bytes_written = (DWORD) -1;
-			register_error(dev, "WriteFile/WaitForSingleObject Timeout");
-			goto end_of_function;
-		}
-
-		res = GetOverlappedResult(dev->device_handle, &dev->write_ol, &bytes_written, FALSE/*F=don't_wait*/);
+		res = GetOverlappedResult(dev->device_handle, &ol, &bytes_written, TRUE/*wait*/);
 		if (!res) {
 			/* The Write operation failed. */
 			register_error(dev, "WriteFile");
@@ -753,10 +706,6 @@ end_of_function:
 	return bytes_written;
 }
 
-int HID_API_EXPORT HID_API_CALL hid_write(hid_device *dev, const unsigned char *data, size_t length)
-{
-	return hid_write_timeout(dev, data, length, HID_WRITE_TIMEOUT_MILLISECONDS);
-}
 
 int HID_API_EXPORT HID_API_CALL hid_read_timeout(hid_device *dev, unsigned char *data, size_t length, int milliseconds)
 {

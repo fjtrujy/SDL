@@ -3,37 +3,27 @@
 
 using namespace metal;
 
-struct SolidVertexInput
-{
-    float2 position [[attribute(0)]];
-};
-
 struct SolidVertexOutput
 {
     float4 position [[position]];
     float pointSize [[point_size]];
 };
 
-vertex SolidVertexOutput SDL_Solid_vertex(SolidVertexInput in [[stage_in]],
+vertex SolidVertexOutput SDL_Solid_vertex(const device float2 *position [[buffer(0)]],
                                           constant float4x4 &projection [[buffer(2)]],
-                                          constant float4x4 &transform [[buffer(3)]])
+                                          constant float4x4 &transform [[buffer(3)]],
+                                          uint vid [[vertex_id]])
 {
     SolidVertexOutput v;
-    v.position = (projection * transform) * float4(in.position, 0.0f, 1.0f);
+    v.position = (projection * transform) * float4(position[vid], 0.0f, 1.0f);
     v.pointSize = 1.0f;
     return v;
 }
 
-fragment float4 SDL_Solid_fragment(const device float4 &col [[buffer(0)]])
+fragment float4 SDL_Solid_fragment(constant float4 &col [[buffer(0)]])
 {
     return col;
 }
-
-struct CopyVertexInput
-{
-    float2 position [[attribute(0)]];
-    float2 texcoord [[attribute(1)]];
-};
 
 struct CopyVertexOutput
 {
@@ -41,18 +31,20 @@ struct CopyVertexOutput
     float2 texcoord;
 };
 
-vertex CopyVertexOutput SDL_Copy_vertex(CopyVertexInput in [[stage_in]],
+vertex CopyVertexOutput SDL_Copy_vertex(const device float2 *position [[buffer(0)]],
+                                        const device float2 *texcoords [[buffer(1)]],
                                         constant float4x4 &projection [[buffer(2)]],
-                                        constant float4x4 &transform [[buffer(3)]])
+                                        constant float4x4 &transform [[buffer(3)]],
+                                        uint vid [[vertex_id]])
 {
     CopyVertexOutput v;
-    v.position = (projection * transform) * float4(in.position, 0.0f, 1.0f);
-    v.texcoord = in.texcoord;
+    v.position = (projection * transform) * float4(position[vid], 0.0f, 1.0f);
+    v.texcoord = texcoords[vid];
     return v;
 }
 
 fragment float4 SDL_Copy_fragment(CopyVertexOutput vert [[stage_in]],
-                                  const device float4 &col [[buffer(0)]],
+                                  constant float4 &col [[buffer(0)]],
                                   texture2d<float> tex [[texture(0)]],
                                   sampler s [[sampler(0)]])
 {
@@ -68,7 +60,7 @@ struct YUVDecode
 };
 
 fragment float4 SDL_YUV_fragment(CopyVertexOutput vert [[stage_in]],
-                                 const device float4 &col [[buffer(0)]],
+                                 constant float4 &col [[buffer(0)]],
                                  constant YUVDecode &decode [[buffer(1)]],
                                  texture2d<float> texY [[texture(0)]],
                                  texture2d_array<float> texUV [[texture(1)]],
@@ -85,7 +77,7 @@ fragment float4 SDL_YUV_fragment(CopyVertexOutput vert [[stage_in]],
 }
 
 fragment float4 SDL_NV12_fragment(CopyVertexOutput vert [[stage_in]],
-                                 const device float4 &col [[buffer(0)]],
+                                 constant float4 &col [[buffer(0)]],
                                  constant YUVDecode &decode [[buffer(1)]],
                                  texture2d<float> texY [[texture(0)]],
                                  texture2d<float> texUV [[texture(1)]],
@@ -101,7 +93,7 @@ fragment float4 SDL_NV12_fragment(CopyVertexOutput vert [[stage_in]],
 }
 
 fragment float4 SDL_NV21_fragment(CopyVertexOutput vert [[stage_in]],
-                                 const device float4 &col [[buffer(0)]],
+                                 constant float4 &col [[buffer(0)]],
                                  constant YUVDecode &decode [[buffer(1)]],
                                  texture2d<float> texY [[texture(0)]],
                                  texture2d<float> texUV [[texture(1)]],

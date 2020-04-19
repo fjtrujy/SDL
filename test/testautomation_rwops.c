@@ -100,7 +100,7 @@ _testGenericRWopsValidations(SDL_RWops *rw, int write)
    int seekPos = SDLTest_RandomIntegerInRange(4, 8);
 
    /* Clear buffer */
-   SDL_zeroa(buf);
+   SDL_zero(buf);
 
    /* Set to start. */
    i = SDL_RWseek(rw, 0, RW_SEEK_SET );
@@ -226,7 +226,7 @@ rwops_testMem (void)
    int result;
 
    /* Clear buffer */
-   SDL_zeroa(mem);
+   SDL_zero(mem);
 
    /* Open */
    rw = SDL_RWFromMem(mem, sizeof(RWopsHelloWorldTestString)-1);
