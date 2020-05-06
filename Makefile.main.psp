@@ -1,0 +1,16 @@
+TARGET_LIB = libSDL2main.a
+
+OBJS= src/main/psp/SDL_psp_main.o
+
+INCDIR = ./include
+CFLAGS = -g -O2 -G0 -Wall -D__PSP__ -DHAVE_OPENGL
+CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti
+ASFLAGS = $(CFLAGS)
+
+LIBDIR  =
+LIBS = -lGL -lGLU -lglut -lz \
+         -lpspvfpu -lpsphprm -lpspsdk -lpspctrl -lpspumd -lpsprtc -lpsppower -lpspgum -lpspgu -lpspaudiolib -lpspaudio -lpsphttp -lpspssl -lpspwlan \
+         -lpspnet_adhocmatching -lpspnet_adhoc -lpspnet_adhocctl -lm -lpspvram
+
+PSPSDK=$(shell psp-config --pspsdk-path)
+include $(PSPSDK)/lib/build.mak
