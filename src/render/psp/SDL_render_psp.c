@@ -174,10 +174,10 @@ typedef struct
 static int
 TextureNextPow2(unsigned int w)
 {
+    unsigned int n = 2;
+
     if(w == 0)
         return 0;
-
-    unsigned int n = 2;
 
     while(w > n)
         n <<= 1;
@@ -218,31 +218,32 @@ StartDrawing(SDL_Renderer * renderer)
 int
 TextureSwizzle(PSP_TextureData *psp_texture)
 {
+    int bytewidth, height;
+    int rowblocks, rowblocksadd;
+    unsigned int blockaddress;
+    unsigned int *src = NULL;
+    unsigned char *data = NULL;
+
     if(psp_texture->swizzled)
         return 1;
 
-    int bytewidth = psp_texture->textureWidth*(psp_texture->bits>>3);
-    int height = psp_texture->size / bytewidth;
+    bytewidth = psp_texture->textureWidth*(psp_texture->bits>>3);
+    height = psp_texture->size / bytewidth;
 
-    int rowblocks = (bytewidth>>4);
-    int rowblocksadd = (rowblocks-1)<<7;
-    unsigned int blockaddress = 0;
-    unsigned int *src = (unsigned int*) psp_texture->data;
+    rowblocks = (bytewidth>>4);
+    rowblocksadd = (rowblocks-1)<<7;
+    blockaddress = 0;
+    src = (unsigned int*) psp_texture->data;
 
-    unsigned char *data = NULL;
     data = malloc(psp_texture->size);
 
-    int j;
-
-    for(j = 0; j < height; j++, blockaddress += 16)
+    for(int j = 0; j < height; j++, blockaddress += 16)
     {
         unsigned int *block;
 
         block = (unsigned int*)&data[blockaddress];
 
-        int i;
-
-        for(i = 0; i < rowblocks; i++)
+        for(int i = 0; i < rowblocks; i++)
         {
             *block++ = *src++;
             *block++ = *src++;
@@ -263,23 +264,27 @@ TextureSwizzle(PSP_TextureData *psp_texture)
 }
 int TextureUnswizzle(PSP_TextureData *psp_texture)
 {
+    int blockx, blocky;
+    int bytewidth, height;
+    int widthblocks, heightblocks;
+    int dstpitch, dstrow;
+    unsigned int *src = NULL;
+    unsigned char *ydst = NULL;
+    unsigned char *data = NULL;
+
     if(!psp_texture->swizzled)
         return 1;
 
-    int blockx, blocky;
+    bytewidth = psp_texture->textureWidth*(psp_texture->bits>>3);
+    height = psp_texture->size / bytewidth;
 
-    int bytewidth = psp_texture->textureWidth*(psp_texture->bits>>3);
-    int height = psp_texture->size / bytewidth;
+    widthblocks = bytewidth/16;
+    heightblocks = height/8;
 
-    int widthblocks = bytewidth/16;
-    int heightblocks = height/8;
+    dstpitch = (bytewidth - 16)/4;
+    dstrow = bytewidth * 8;
 
-    int dstpitch = (bytewidth - 16)/4;
-    int dstrow = bytewidth * 8;
-
-    unsigned int *src = (unsigned int*) psp_texture->data;
-
-    unsigned char *data = NULL;
+    src = (unsigned int*) psp_texture->data;
 
     data = malloc(psp_texture->size);
 
@@ -288,9 +293,7 @@ int TextureUnswizzle(PSP_TextureData *psp_texture)
 
     sceKernelDcacheWritebackAll();
 
-    int j;
-
-    unsigned char *ydst = (unsigned char *)data;
+    ydst = (unsigned char *)data;
 
     for(blocky = 0; blocky < heightblocks; ++blocky)
     {
@@ -302,7 +305,7 @@ int TextureUnswizzle(PSP_TextureData *psp_texture)
 
             block = (unsigned int*)xdst;
 
-            for(j = 0; j < 8; ++j)
+            for(int j = 0; j < 8; ++j)
             {
                 *(block++) = *(src++);
                 *(block++) = *(src++);
@@ -623,9 +626,11 @@ PSP_SetBlendMode(SDL_Renderer * renderer, int blendMode)
 static int
 PSP_RenderClear(SDL_Renderer * renderer)
 {
+    int color;
+
     /* start list */
     StartDrawing(renderer);
-    int color = renderer->a << 24 | renderer->b << 16 | renderer->g << 8 | renderer->r;
+    color = renderer->a << 24 | renderer->b << 16 | renderer->g << 8 | renderer->r;
     sceGuClearColor(color);
     sceGuClearDepth(0);
     sceGuClear(GU_COLOR_BUFFER_BIT|GU_DEPTH_BUFFER_BIT|GU_FAST_CLEAR_BIT);
@@ -639,8 +644,9 @@ PSP_RenderDrawPoints(SDL_Renderer * renderer, const SDL_FPoint * points,
 {
     int color = renderer->a << 24 | renderer->b << 16 | renderer->g << 8 | renderer->r;
     int i;
+    VertV* vertices = NULL;
     StartDrawing(renderer);
-    VertV* vertices = (VertV*)sceGuGetMemory(count*sizeof(VertV));
+    vertices = (VertV*)sceGuGetMemory(count*sizeof(VertV));
 
     for (i = 0; i < count; ++i) {
             vertices[i].x = points[i].x;
@@ -663,8 +669,9 @@ PSP_RenderDrawLines(SDL_Renderer * renderer, const SDL_FPoint * points,
 {
     int color = renderer->a << 24 | renderer->b << 16 | renderer->g << 8 | renderer->r;
     int i;
+    VertV* vertices = NULL;
     StartDrawing(renderer);
-    VertV* vertices = (VertV*)sceGuGetMemory(count*sizeof(VertV));
+    vertices = (VertV*)sceGuGetMemory(count*sizeof(VertV));
 
     for (i = 0; i < count; ++i) {
             vertices[i].x = points[i].x;
@@ -862,6 +869,10 @@ PSP_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     float u0, v0, u1, v1;
     unsigned char alpha;
     float centerx, centery;
+    float c, s;
+    float cw, sw, ch, sh;
+
+    VertTV* vertices = NULL;
 
     x = dstrect->x;
     y = dstrect->y;
@@ -896,8 +907,6 @@ PSP_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     x += centerx;
     y += centery;
 
-    float c, s;
-
     MathSincos(degToRad(angle), &s, &c);
 
 /*      width *= 0.5f; */
@@ -906,12 +915,12 @@ PSP_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     height -= centery;
 
 
-    float cw = c*width;
-    float sw = s*width;
-    float ch = c*height;
-    float sh = s*height;
+    cw = c*width;
+    sw = s*width;
+    ch = c*height;
+    sh = s*height;
 
-    VertTV* vertices = (VertTV*)sceGuGetMemory(sizeof(VertTV)<<2);
+    vertices = (VertTV*)sceGuGetMemory(sizeof(VertTV)<<2);
 
     vertices[0].u = u0;
     vertices[0].v = v0;

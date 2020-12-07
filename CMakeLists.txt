@@ -151,7 +151,7 @@ if(APPLE OR ARCH_64)
     set(OPT_DEF_SSEMATH ON)
   endif()
 endif()
-if(UNIX OR MINGW OR MSYS)
+if(UNIX OR MINGW OR MSYS OR PLATFORM_PSP)
   set(OPT_DEF_LIBC ON)
 endif()
 
@@ -1554,6 +1554,104 @@ elseif(HAIKU)
   endif()
 
   CheckPTHREAD()
+elseif(PLATFORM_PSP)
+  # Disable some functions which cmake thinks exist but don't
+  set(HAVE_SYSCTLBYNAME FALSE)
+  set(HAVE_FSEEKO64 FALSE)
+  set(HAVE_SYSCONF FALSE)
+  set(HAVE_SIGACTION FALSE)
+  set(HAVE_FOPEN64 FALSE)
+  set(HAVE__STRREV FALSE)
+  set(HAVE__STRUPR FALSE)
+  set(HAVE__STRLWR FALSE)
+  set(HAVE_ITOA FALSE)
+  set(HAVE__UITOA FALSE)
+  set(HAVE__LTOA FALSE)
+  set(HAVE__ULTOA FALSE)
+  set(HAVE__I64TOA FALSE)
+  set(HAVE__UI64TOA FALSE)
+
+  # Set variables for pkgconf and sdl2config in reverse order
+  set(EXTRA_LIBS
+    pspuser
+    pspge
+    pspgu
+    pspvram
+    pspaudio
+    psprtc
+    pspirkeyb
+    psphprm
+    pspdisplay
+    pspvfpu
+    pspaudiolib
+    pspsdk
+    pspctrl
+    pspdebug
+    g
+    GL
+    m
+  )
+  set(SDL_CFLAGS "${SDL_CFLAGS} -Dmain=SDL_main -I$PSPDEV/psp/sdk/include")
+  list(APPEND SDL_LIBS "-lSDL2main")
+  list(APPEND EXTRA_LDFLAGS "-L$PSPDEV/psp/sdk/lib")
+  set(SDL_SHARED FALSE)
+
+  # Set source files for SDL2main
+  file(GLOB PSP_MAIN_SOURCES ${SDL2_SOURCE_DIR}/src/main/psp/*.c)
+  set(SDLMAIN_SOURCES ${SDLMAIN_SOURCES} ${PSP_MAIN_SOURCES})
+
+  set(HAVE_SDL_LOADSO FALSE)
+  set(HAVE_SDL_FILESYSTEM FALSE)
+  set(HAVE_SDL_SENSORS FALSE)
+  set(HAVE_SDL_HAPTIC FALSE)
+
+  if(SDL_AUDIO)
+    set(SDL_AUDIO_DRIVER_PSP 1)
+    file(GLOB AUDIO_SOURCES ${SDL2_SOURCE_DIR}/src/audio/psp/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${AUDIO_SOURCES})
+    set(HAVE_SDL_AUDIO TRUE)
+  endif()
+
+  if(SDL_VIDEO)
+    set(SDL_VIDEO_DRIVER_PSP 1)
+    set(SDL_VIDEO_RENDER_PSP 1)
+    file(GLOB VIDEO_SOURCES ${SDL2_SOURCE_DIR}/src/video/psp/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${VIDEO_SOURCES})
+    set(HAVE_SDL_VIDEO TRUE)
+
+    if(SDL_TIMERS)
+      set(SDL_TIMER_PSP 1)
+      file(GLOB TIMER_SOURCES ${SDL2_SOURCE_DIR}/src/timer/psp/*.c)
+      set(SOURCE_FILES ${SOURCE_FILES} ${TIMER_SOURCES})
+      set(HAVE_SDL_TIMERS TRUE)
+    endif(SDL_TIMERS)
+
+    if(VIDEO_OPENGL)
+      set(SDL_VIDEO_OPENGL 1)
+      set(HAVE_VIDEO_OPENGL TRUE)
+    endif()
+  endif()
+
+  if(SDL_JOYSTICK)
+    set(SDL_JOYSTICK_PSP 1)
+    file(GLOB JOYSTICK_SOURCES ${SDL2_SOURCE_DIR}/src/joystick/psp/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${JOYSTICK_SOURCES})
+    set(HAVE_SDL_JOYSTICK TRUE)
+  endif()
+
+  if(SDL_POWER)
+    set(SDL_POWER_PSP 1)
+    file(GLOB POWER_SOURCES ${SDL2_SOURCE_DIR}/src/power/psp/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${POWER_SOURCES})
+    set(HAVE_SDL_POWER TRUE)
+  endif()
+
+  if(SDL_THREADS)
+    set(SDL_THREAD_PSP 1)
+    file(GLOB THREAD_SOURCES ${SDL2_SOURCE_DIR}/src/thread/generic/SDL_systls.c ${SDL2_SOURCE_DIR}/src/thread/psp/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${THREAD_SOURCES})
+    set(HAVE_SDL_THREADS TRUE)
+  endif()
 endif()
 
 if(VIDEO_VULKAN)
@@ -1664,7 +1762,11 @@ if(NOT WINDOWS OR CYGWIN)
 
   # Clean up the different lists
   listtostr(EXTRA_LIBS _EXTRA_LIBS "-l")
-  set(SDL_STATIC_LIBS ${SDL_LIBS} ${EXTRA_LDFLAGS} ${_EXTRA_LIBS})
+  if(PLATFORM_PSP)
+    set(SDL_STATIC_LIBS ${EXTRA_LDFLAGS} ${_EXTRA_LIBS} ${SDL_LIBS})
+  else()
+    set(SDL_STATIC_LIBS ${SDL_LIBS} ${EXTRA_LDFLAGS} ${_EXTRA_LIBS})
+  endif()
   list(REMOVE_DUPLICATES SDL_STATIC_LIBS)
   listtostr(SDL_STATIC_LIBS _SDL_STATIC_LIBS)
   set(SDL_STATIC_LIBS ${_SDL_STATIC_LIBS})
