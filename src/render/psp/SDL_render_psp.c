@@ -302,6 +302,7 @@ TextureSwizzle(PSP_TextureData *psp_texture, void* dst)
     psp_texture->data = data;
     psp_texture->swizzled = SDL_TRUE;
 
+    sceKernelDcacheWritebackRange(psp_texture->data, psp_texture->size);
     return 1;
 }
 
@@ -332,8 +333,6 @@ TextureUnswizzle(PSP_TextureData *psp_texture, void* dst)
 
     if(!data)
         return SDL_OutOfMemory();
-
-    sceKernelDcacheWritebackAll();
 
     int j;
 
@@ -370,6 +369,7 @@ TextureUnswizzle(PSP_TextureData *psp_texture, void* dst)
 
     psp_texture->swizzled = SDL_FALSE;
 
+    sceKernelDcacheWritebackRange(psp_texture->data, psp_texture->size);
     return 1;
 }
 
@@ -387,6 +387,8 @@ TextureSpillToSram(PSP_RenderData* data, PSP_TextureData* psp_texture)
         SDL_memcpy(data, psp_texture->data, psp_texture->size);
         vfree(psp_texture->data);
         psp_texture->data = data;
+
+        sceKernelDcacheWritebackRange(psp_texture->data, psp_texture->size);
         return 0;
     } else {
         return TextureSwizzle(psp_texture, NULL); //Will realloc in sysram
@@ -404,6 +406,7 @@ TexturePromoteToVram(PSP_RenderData* data, PSP_TextureData* psp_texture, SDL_boo
         SDL_memcpy(tdata, psp_texture->data, psp_texture->size);
         SDL_free(psp_texture->data);
         psp_texture->data = tdata;
+        sceKernelDcacheWritebackRange(psp_texture->data, psp_texture->size);
         return 0;
     }
 }
