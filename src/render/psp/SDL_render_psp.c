@@ -57,26 +57,6 @@ static unsigned int __attribute__((aligned(16))) DisplayList[262144];
 #define COL4444(r,g,b,a)    ((r>>4) | ((g>>4)<<4) | ((b>>4)<<8) | ((a>>4)<<12))
 #define COL8888(r,g,b,a)    ((r) | ((g)<<8) | ((b)<<16) | ((a)<<24))
 
-
-/*typedef struct
-{
-    SDL_Rect viewport;
-    SDL_bool viewport_dirty;
-    SDL_Texture *texture;
-    SDL_Texture *target;
-    int drawablew;
-    int drawableh;
-    SDL_BlendMode blend;
-    SDL_bool cliprect_enabled_dirty;
-    SDL_bool cliprect_enabled;
-    SDL_bool cliprect_dirty;
-    SDL_Rect cliprect;
-    SDL_bool texturing;
-    Uint32 color;
-    Uint32 clear_color;
-    } PSP_DrawStateCache;*/
-
-
 /**
  * Holds psp specific texture data
  *
@@ -95,8 +75,8 @@ typedef struct PSP_TextureData
     unsigned int        format;                             /**< Image format - one of ::pgePixelFormat. */
     unsigned int        pitch;
     SDL_bool            swizzled;                           /**< Is image swizzled. */
-    struct PSP_TextureData*    prevhot;                            /**< More recently used render target */
-    struct PSP_TextureData*    nexthot;                            /**< Less recently used render target */
+    struct PSP_TextureData*    prevhotw;                            /**< More recently used render target */
+    struct PSP_TextureData*    nexthotw;                            /**< Less recently used render target */
 } PSP_TextureData;
 
 
@@ -115,7 +95,6 @@ typedef struct
     int                currentBlendMode;                    /**< current blend mode */
     PSP_TextureData*   most_recent_target;                  /**< start of render target LRU double linked list */
     PSP_TextureData*   least_recent_target;                 /**< end of the LRU list */
-    //PSP_DrawStateCache drawstate;                           /**< cached draw state */
 } PSP_RenderData;
 
 
@@ -172,6 +151,12 @@ Swap(float *a, float *b)
     *b = n;
 }
 
+static inline int
+InVram(void* data)
+{
+    return data < 0x04200000;
+}
+
 /* Return next power of 2 */
 static int
 TextureNextPow2(unsigned int w)
@@ -205,35 +190,70 @@ PixelFormatToPSPFMT(Uint32 format)
     }
 }
 
+///SECTION render target LRU management
 static void
-StartDrawing(SDL_Renderer * renderer)
-{
-    PSP_RenderData *data = (PSP_RenderData *) renderer->driverdata;
-
-    // Check if we need to start GU displaylist
-    if(!data->displayListAvail) {
-        sceGuStart(GU_DIRECT, DisplayList);
-        data->displayListAvail = SDL_TRUE;
+LRUTargetRelink(PSP_TextureData* psp_texture) {
+    if(psp_texture->prevhotw) {
+        psp_texture->prevhotw->nexthotw = psp_texture->nexthotw;
     }
-
-    // Check if we need a draw buffer change
-    if(renderer->target != data->boundTarget) {
-        SDL_Texture* texture = renderer->target;
-        if(texture) {
-            PSP_TextureData* psp_texture = (PSP_TextureData*) texture->driverdata;
-            // Set target back to screen
-            sceGuDrawBufferList(psp_texture->format, vrelptr(psp_texture->data), psp_texture->textureWidth);
-        } else {
-            // Set target back to screen
-            sceGuDrawBufferList(data->psm, vrelptr(data->frontbuffer), PSP_FRAME_BUFFER_WIDTH);
-        }
-        data->boundTarget = texture;
+    if(psp_texture->nexthotw) {
+        psp_texture->nexthotw->prevhotw = psp_texture->prevhotw;
     }
 }
 
+static void
+LRUTargetFixTail(PSP_RenderData* data, PSP_TextureData* psp_texture) {
+    if(data->least_recent_target == psp_texture) {
+        data->least_recent_target = psp_texture->prevhotw;
+    } else if(!data->least_recent_target) {
+        data->least_recent_target = psp_texture;
+    }
+}
+
+static void
+LRUTargetPushFront(PSP_RenderData* data, PSP_TextureData* psp_texture) {
+    psp_texture->nexthotw = data->most_recent_target;
+    if(data->most_recent_target) {
+        data->most_recent_target->prevhotw = psp_texture;
+    }
+    LRUTargetFixTail(data, psp_texture);
+}
+
+static void
+LRUTargetBringFront(PSP_RenderData* data, PSP_TextureData* psp_texture) {
+    if(data->most_recent_target == psp_texture) {
+        return; //nothing to do
+    }
+    LRUTargetRelink(psp_texture);
+    psp_texture->prevhotw = NULL;
+    psp_texture->nexthotw = NULL;
+    LRUTargetPushFront(data, psp_texture);
+}
+
+static void
+LRUTargetRemove(PSP_RenderData* data, PSP_TextureData* psp_texture) {
+    LRUTargetRelink(psp_texture);
+    if(data->most_recent_target == psp_texture) {
+        data->most_recent_target = psp_texture->nexthotw;
+    }
+    if(data->least_recent_target == psp_texture) {
+        data->least_recent_target = psp_texture->prevhotw;
+    }
+    psp_texture->prevhotw = NULL;
+    psp_texture->nexthotw = NULL;
+}
+
+static void
+TextureStorageFree(void* storage) {
+    if(InVram(storage)) {
+        vfree(storage);
+    } else {
+        SDL_free(storage);
+    }
+}
 
 static int
-TextureSwizzle(PSP_TextureData *psp_texture)
+TextureSwizzle(PSP_TextureData *psp_texture, void* dst)
 {
     if(psp_texture->swizzled)
         return 1;
@@ -246,8 +266,14 @@ TextureSwizzle(PSP_TextureData *psp_texture)
     unsigned int blockaddress = 0;
     unsigned int *src = (unsigned int*) psp_texture->data;
 
-    unsigned char *data = NULL;
-    data = SDL_malloc(psp_texture->size);
+    unsigned char *data = dst;
+    if(!data) {
+        data = SDL_malloc(psp_texture->size);
+    }
+
+    if(!data) {
+        return SDL_OutOfMemory();
+    }
 
     int j;
 
@@ -272,7 +298,7 @@ TextureSwizzle(PSP_TextureData *psp_texture)
             blockaddress += rowblocksadd;
     }
 
-    SDL_free(psp_texture->data);
+    TextureStorageFree(psp_texture->data);
     psp_texture->data = data;
     psp_texture->swizzled = SDL_TRUE;
 
@@ -280,7 +306,7 @@ TextureSwizzle(PSP_TextureData *psp_texture)
 }
 
 static int
-TextureUnswizzle(PSP_TextureData *psp_texture)
+TextureUnswizzle(PSP_TextureData *psp_texture, void* dst)
 {
     if(!psp_texture->swizzled)
         return 1;
@@ -298,12 +324,14 @@ TextureUnswizzle(PSP_TextureData *psp_texture)
 
     unsigned int *src = (unsigned int*) psp_texture->data;
 
-    unsigned char *data = NULL;
+    unsigned char *data = dst;
 
-    data = malloc(psp_texture->size);
+    if(!data) {
+        data = SDL_malloc(psp_texture->size);
+    }
 
     if(!data)
-        return 0;
+        return SDL_OutOfMemory();
 
     sceKernelDcacheWritebackAll();
 
@@ -336,13 +364,87 @@ TextureUnswizzle(PSP_TextureData *psp_texture)
         ydst += dstrow;
     }
 
-    free(psp_texture->data);
+    TextureStorageFree(psp_texture->data);
 
     psp_texture->data = data;
 
     psp_texture->swizzled = SDL_FALSE;
 
     return 1;
+}
+
+static int
+TextureSpillToSram(PSP_RenderData* data, PSP_TextureData* psp_texture)
+{
+    // Assumes the texture is in VRAM
+    if(psp_texture->swizzled) {
+        //Texture was swizzled in vram, just copy to system memory
+        void* data = SDL_malloc(psp_texture->size);
+        if(!data) {
+            return SDL_OutOfMemory();
+        }
+
+        SDL_memcpy(data, psp_texture->data, psp_texture->size);
+        vfree(psp_texture->data);
+        psp_texture->data = data;
+        return 0;
+    } else {
+        return TextureSwizzle(psp_texture, NULL); //Will realloc in sysram
+    }
+}
+
+static int
+TexturePromoteToVram(PSP_RenderData* data, PSP_TextureData* psp_texture, SDL_bool target)
+{
+    // Assumes texture in sram and a large enough continuous block in vram
+    void* tdata = valloc(psp_texture->size);
+    if(psp_texture->swizzled && target) {
+        return TextureUnswizzle(psp_texture, tdata);
+    } else {
+        SDL_memcpy(tdata, psp_texture->data, psp_texture->size);
+        SDL_free(psp_texture->data);
+        psp_texture->data = tdata;
+        return 0;
+    }
+}
+
+static int
+TextureSpillLRU(PSP_RenderData* data) {
+    PSP_TextureData* lru = data->least_recent_target;
+    if(lru) {
+        if(TextureSpillToSram(data, lru) < 0) {
+            return -1;
+        }
+        LRUTargetRemove(data, lru);
+    }
+    return 0;
+}
+
+static int
+TextureSpillTargetsForSpace(PSP_RenderData* data, size_t size)
+{
+    while(vlargestblock() < size) {
+        if(TextureSpillLRU(data) < 0) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+static int
+TextureBindAsTarget(PSP_RenderData* data, PSP_TextureData* psp_texture) {
+    if(!InVram(psp_texture->data)) {
+        // Bring back the texture in vram
+        if(TextureSpillTargetsForSpace(data, psp_texture->size) < 0) {
+            return -1;
+        }
+        if(TexturePromoteToVram(data, psp_texture, SDL_TRUE) < 0) {
+            return -1;
+        }
+    }
+    LRUTargetBringFront(data, psp_texture);
+    sceGuDrawBufferList(psp_texture->format, vrelptr(psp_texture->data), psp_texture->textureWidth);
+    return 0;
 }
 
 static void
@@ -354,7 +456,7 @@ PSP_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
 static int
 PSP_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
-/*      PSP_RenderData *renderdata = (PSP_RenderData *) renderer->driverdata; */
+    PSP_RenderData *data = renderer->driverdata;
     PSP_TextureData* psp_texture = (PSP_TextureData*) SDL_calloc(1, sizeof(*psp_texture));
 
     if(!psp_texture)
@@ -386,7 +488,13 @@ PSP_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     psp_texture->pitch = psp_texture->textureWidth * SDL_BYTESPERPIXEL(texture->format);
     psp_texture->size = psp_texture->textureHeight*psp_texture->pitch;
     if(texture->access & SDL_TEXTUREACCESS_TARGET) {
+        if(TextureSpillTargetsForSpace(renderer->driverdata, psp_texture->size) < 0){
+            return -1;
+        }
         psp_texture->data = valloc(psp_texture->size);
+        if(psp_texture->data) {
+            LRUTargetPushFront(data, psp_texture);
+        }
     } else {
         psp_texture->data = SDL_calloc(1, psp_texture->size);
     }
@@ -407,11 +515,7 @@ PSP_SetTextureColorMod(SDL_Renderer * renderer, SDL_Texture * texture)
     return SDL_Unsupported();
 }*/
 
-static inline int
-InVram(void* data)
-{
-    return data < 0x04200000;
-}
+
 
 static int
 TextureShouldSwizzle(PSP_TextureData* psp_texture, SDL_Texture *texture)
@@ -429,7 +533,7 @@ TextureActivate(SDL_Texture * texture)
     /* Swizzling is useless with small textures. */
     if (TextureShouldSwizzle(psp_texture, texture))
     {
-        TextureSwizzle(psp_texture);
+        TextureSwizzle(psp_texture, NULL);
     }
 
     sceGuEnable(GU_TEXTURE_2D);
@@ -722,6 +826,34 @@ PSP_QueueCopyEx(SDL_Renderer * renderer, SDL_RenderCommand *cmd, SDL_Texture * t
     return 0;
 }
 
+
+static void
+StartDrawing(SDL_Renderer * renderer)
+{
+    PSP_RenderData *data = (PSP_RenderData *) renderer->driverdata;
+
+    // Check if we need to start GU displaylist
+    if(!data->displayListAvail) {
+        sceGuStart(GU_DIRECT, DisplayList);
+        data->displayListAvail = SDL_TRUE;
+    }
+
+    // Check if we need a draw buffer change
+    if(renderer->target != data->boundTarget) {
+        SDL_Texture* texture = renderer->target;
+        if(texture) {
+            PSP_TextureData* psp_texture = (PSP_TextureData*) texture->driverdata;
+            // Set target, registering LRU
+            TextureBindAsTarget(data, psp_texture);
+        } else {
+            // Set target back to screen
+            sceGuDrawBufferList(data->psm, vrelptr(data->frontbuffer), PSP_FRAME_BUFFER_WIDTH);
+        }
+        data->boundTarget = texture;
+    }
+}
+
+
 static void
 PSP_SetBlendMode(SDL_Renderer * renderer, int blendMode)
 {
@@ -962,11 +1094,7 @@ PSP_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     if(psp_texture == 0)
         return;
 
-    if(InVram(psp_texture->data)) {
-        vfree(psp_texture->data);
-    } else {
-        SDL_free(psp_texture->data);
-    }
+    TextureStorageFree(psp_texture->data);
     SDL_free(psp_texture);
     texture->driverdata = NULL;
 }
