@@ -18,24 +18,37 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_PSP
-
-#include <stdio.h>
-
-#include "SDL_error.h"
-#include "SDL_mouse.h"
-#include "../../events/SDL_events_c.h"
-
-#include "SDL_pspmouse_c.h"
+#ifndef SDL_ps2gl_c_h_
+#define SDL_ps2gl_c_h_
 
 
-/* The implementation dependent data for the window manager cursor */
-struct WMcursor {
-    int unused;
-};
+#include <GLES/egl.h>
+#include <GLES/gl.h>
 
-#endif /* SDL_VIDEO_DRIVER_PSP */
+#include "SDL_ps2video.h"
+
+
+typedef struct SDL_GLDriverData {
+        EGLDisplay display;
+        EGLContext context;
+        EGLSurface surface;
+    uint32_t swapinterval;
+}SDL_GLDriverData;
+
+extern void * PS2_GL_GetProcAddress(_THIS, const char *proc);
+extern int PS2_GL_MakeCurrent(_THIS,SDL_Window * window, SDL_GLContext context);
+extern void PS2_GL_SwapBuffers(_THIS);
+
+extern int PS2_GL_SwapWindow(_THIS, SDL_Window * window);
+extern SDL_GLContext PS2_GL_CreateContext(_THIS, SDL_Window * window);
+
+extern int PS2_GL_LoadLibrary(_THIS, const char *path);
+extern void PS2_GL_UnloadLibrary(_THIS);
+extern int PS2_GL_SetSwapInterval(_THIS, int interval);
+extern int PS2_GL_GetSwapInterval(_THIS);
+
+
+#endif /* SDL_ps2gl_c_h_ */
 
 /* vi: set ts=4 sw=4 expandtab: */

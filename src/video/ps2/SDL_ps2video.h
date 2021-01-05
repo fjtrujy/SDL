@@ -19,8 +19,8 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifndef SDL_pspvideo_h_
-#define SDL_pspvideo_h_
+#ifndef SDL_ps2video_h_
+#define SDL_ps2video_h_
 
 #include <GLES/egl.h>
 
@@ -57,46 +57,46 @@ typedef struct SDL_WindowData
 /****************************************************************************/
 
 /* Display and window functions */
-int PSP_VideoInit(_THIS);
-void PSP_VideoQuit(_THIS);
-void PSP_GetDisplayModes(_THIS, SDL_VideoDisplay * display);
-int PSP_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode);
-int PSP_CreateWindow(_THIS, SDL_Window * window);
-int PSP_CreateWindowFrom(_THIS, SDL_Window * window, const void *data);
-void PSP_SetWindowTitle(_THIS, SDL_Window * window);
-void PSP_SetWindowIcon(_THIS, SDL_Window * window, SDL_Surface * icon);
-void PSP_SetWindowPosition(_THIS, SDL_Window * window);
-void PSP_SetWindowSize(_THIS, SDL_Window * window);
-void PSP_ShowWindow(_THIS, SDL_Window * window);
-void PSP_HideWindow(_THIS, SDL_Window * window);
-void PSP_RaiseWindow(_THIS, SDL_Window * window);
-void PSP_MaximizeWindow(_THIS, SDL_Window * window);
-void PSP_MinimizeWindow(_THIS, SDL_Window * window);
-void PSP_RestoreWindow(_THIS, SDL_Window * window);
-void PSP_SetWindowGrab(_THIS, SDL_Window * window, SDL_bool grabbed);
-void PSP_DestroyWindow(_THIS, SDL_Window * window);
+int PS2_VideoInit(_THIS);
+void PS2_VideoQuit(_THIS);
+void PS2_GetDisplayModes(_THIS, SDL_VideoDisplay * display);
+int PS2_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode);
+int PS2_CreateWindow(_THIS, SDL_Window * window);
+int PS2_CreateWindowFrom(_THIS, SDL_Window * window, const void *data);
+void PS2_SetWindowTitle(_THIS, SDL_Window * window);
+void PS2_SetWindowIcon(_THIS, SDL_Window * window, SDL_Surface * icon);
+void PS2_SetWindowPosition(_THIS, SDL_Window * window);
+void PS2_SetWindowSize(_THIS, SDL_Window * window);
+void PS2_ShowWindow(_THIS, SDL_Window * window);
+void PS2_HideWindow(_THIS, SDL_Window * window);
+void PS2_RaiseWindow(_THIS, SDL_Window * window);
+void PS2_MaximizeWindow(_THIS, SDL_Window * window);
+void PS2_MinimizeWindow(_THIS, SDL_Window * window);
+void PS2_RestoreWindow(_THIS, SDL_Window * window);
+void PS2_SetWindowGrab(_THIS, SDL_Window * window, SDL_bool grabbed);
+void PS2_DestroyWindow(_THIS, SDL_Window * window);
 
 /* Window manager function */
-SDL_bool PSP_GetWindowWMInfo(_THIS, SDL_Window * window,
+SDL_bool PS2_GetWindowWMInfo(_THIS, SDL_Window * window,
                              struct SDL_SysWMinfo *info);
 
 /* OpenGL/OpenGL ES functions */
-int PSP_GL_LoadLibrary(_THIS, const char *path);
-void *PSP_GL_GetProcAddress(_THIS, const char *proc);
-void PSP_GL_UnloadLibrary(_THIS);
-SDL_GLContext PSP_GL_CreateContext(_THIS, SDL_Window * window);
-int PSP_GL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context);
-int PSP_GL_SetSwapInterval(_THIS, int interval);
-int PSP_GL_GetSwapInterval(_THIS);
-int PSP_GL_SwapWindow(_THIS, SDL_Window * window);
-void PSP_GL_DeleteContext(_THIS, SDL_GLContext context);
+int PS2_GL_LoadLibrary(_THIS, const char *path);
+void *PS2_GL_GetProcAddress(_THIS, const char *proc);
+void PS2_GL_UnloadLibrary(_THIS);
+SDL_GLContext PS2_GL_CreateContext(_THIS, SDL_Window * window);
+int PS2_GL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context);
+int PS2_GL_SetSwapInterval(_THIS, int interval);
+int PS2_GL_GetSwapInterval(_THIS);
+int PS2_GL_SwapWindow(_THIS, SDL_Window * window);
+void PS2_GL_DeleteContext(_THIS, SDL_GLContext context);
 
-/* PSP on screen keyboard */
-SDL_bool PSP_HasScreenKeyboardSupport(_THIS);
-void PSP_ShowScreenKeyboard(_THIS, SDL_Window *window);
-void PSP_HideScreenKeyboard(_THIS, SDL_Window *window);
-SDL_bool PSP_IsScreenKeyboardShown(_THIS, SDL_Window *window);
+/* PS2 on screen keyboard */
+SDL_bool PS2_HasScreenKeyboardSupport(_THIS);
+void PS2_ShowScreenKeyboard(_THIS, SDL_Window *window);
+void PS2_HideScreenKeyboard(_THIS, SDL_Window *window);
+SDL_bool PS2_IsScreenKeyboardShown(_THIS, SDL_Window *window);
 
-#endif /* SDL_pspvideo_h_ */
+#endif /* SDL_ps2video_h_ */
 
 /* vi: set ts=4 sw=4 expandtab: */

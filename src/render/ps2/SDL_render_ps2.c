@@ -20,19 +20,19 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_RENDER_PSP
+#if SDL_VIDEO_RENDER_PS2
 
 #include "SDL_hints.h"
 #include "../SDL_sysrender.h"
 
-#include <pspkernel.h>
-#include <pspdisplay.h>
-#include <pspgu.h>
-#include <pspgum.h>
+#include <ps2kernel.h>
+#include <ps2display.h>
+#include <ps2gu.h>
+#include <ps2gum.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <pspge.h>
+#include <ps2ge.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <vram.h>
@@ -40,13 +40,13 @@
 
 
 
-/* PSP renderer implementation, based on the PGE  */
+/* PS2 renderer implementation, based on the PGE  */
 
-#define PSP_SCREEN_WIDTH    480
-#define PSP_SCREEN_HEIGHT   272
+#define PS2_SCREEN_WIDTH    480
+#define PS2_SCREEN_HEIGHT   272
 
-#define PSP_FRAME_BUFFER_WIDTH  512
-#define PSP_FRAME_BUFFER_SIZE   (PSP_FRAME_BUFFER_WIDTH*PSP_SCREEN_HEIGHT)
+#define PS2_FRAME_BUFFER_WIDTH  512
+#define PS2_FRAME_BUFFER_SIZE   (PS2_FRAME_BUFFER_WIDTH*PS2_SCREEN_HEIGHT)
 
 static unsigned int __attribute__((aligned(16))) DisplayList[262144];
 
@@ -70,7 +70,7 @@ typedef struct
     unsigned int    currentColor;
     int             currentBlendMode;
 
-} PSP_RenderData;
+} PS2_RenderData;
 
 
 typedef struct
@@ -86,7 +86,7 @@ typedef struct
     unsigned int        pitch;
     SDL_bool            swizzled;                           /**< Is image swizzled. */
 
-} PSP_TextureData;
+} PS2_TextureData;
 
 typedef struct
 {
@@ -155,7 +155,7 @@ TextureNextPow2(unsigned int w)
 
 
 static int
-PixelFormatToPSPFMT(Uint32 format)
+PixelFormatToPS2FMT(Uint32 format)
 {
     switch (format) {
     case SDL_PIXELFORMAT_BGR565:
@@ -174,7 +174,7 @@ PixelFormatToPSPFMT(Uint32 format)
 void
 StartDrawing(SDL_Renderer * renderer)
 {
-    PSP_RenderData *data = (PSP_RenderData *) renderer->driverdata;
+    PS2_RenderData *data = (PS2_RenderData *) renderer->driverdata;
     if(data->displayListAvail)
         return;
 
@@ -184,21 +184,21 @@ StartDrawing(SDL_Renderer * renderer)
 
 
 int
-TextureSwizzle(PSP_TextureData *psp_texture)
+TextureSwizzle(PS2_TextureData *ps2_texture)
 {
-    if(psp_texture->swizzled)
+    if(ps2_texture->swizzled)
         return 1;
 
-    int bytewidth = psp_texture->textureWidth*(psp_texture->bits>>3);
-    int height = psp_texture->size / bytewidth;
+    int bytewidth = ps2_texture->textureWidth*(ps2_texture->bits>>3);
+    int height = ps2_texture->size / bytewidth;
 
     int rowblocks = (bytewidth>>4);
     int rowblocksadd = (rowblocks-1)<<7;
     unsigned int blockaddress = 0;
-    unsigned int *src = (unsigned int*) psp_texture->data;
+    unsigned int *src = (unsigned int*) ps2_texture->data;
 
     unsigned char *data = NULL;
-    data = malloc(psp_texture->size);
+    data = malloc(ps2_texture->size);
 
     int j;
 
@@ -223,21 +223,21 @@ TextureSwizzle(PSP_TextureData *psp_texture)
             blockaddress += rowblocksadd;
     }
 
-    free(psp_texture->data);
-    psp_texture->data = data;
-    psp_texture->swizzled = SDL_TRUE;
+    free(ps2_texture->data);
+    ps2_texture->data = data;
+    ps2_texture->swizzled = SDL_TRUE;
 
     return 1;
 }
-int TextureUnswizzle(PSP_TextureData *psp_texture)
+int TextureUnswizzle(PS2_TextureData *ps2_texture)
 {
-    if(!psp_texture->swizzled)
+    if(!ps2_texture->swizzled)
         return 1;
 
     int blockx, blocky;
 
-    int bytewidth = psp_texture->textureWidth*(psp_texture->bits>>3);
-    int height = psp_texture->size / bytewidth;
+    int bytewidth = ps2_texture->textureWidth*(ps2_texture->bits>>3);
+    int height = ps2_texture->size / bytewidth;
 
     int widthblocks = bytewidth/16;
     int heightblocks = height/8;
@@ -245,11 +245,11 @@ int TextureUnswizzle(PSP_TextureData *psp_texture)
     int dstpitch = (bytewidth - 16)/4;
     int dstrow = bytewidth * 8;
 
-    unsigned int *src = (unsigned int*) psp_texture->data;
+    unsigned int *src = (unsigned int*) ps2_texture->data;
 
     unsigned char *data = NULL;
 
-    data = malloc(psp_texture->size);
+    data = malloc(ps2_texture->size);
 
     if(!data)
         return 0;
@@ -285,69 +285,69 @@ int TextureUnswizzle(PSP_TextureData *psp_texture)
         ydst += dstrow;
     }
 
-    free(psp_texture->data);
+    free(ps2_texture->data);
 
-    psp_texture->data = data;
+    ps2_texture->data = data;
 
-    psp_texture->swizzled = SDL_FALSE;
+    ps2_texture->swizzled = SDL_FALSE;
 
     return 1;
 }
 
 static void
-PSP_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
+PS2_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
 {
 }
 
 
 static int
-PSP_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
+PS2_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
-/*      PSP_RenderData *renderdata = (PSP_RenderData *) renderer->driverdata; */
-    PSP_TextureData* psp_texture = (PSP_TextureData*) SDL_calloc(1, sizeof(*psp_texture));
+/*      PS2_RenderData *renderdata = (PS2_RenderData *) renderer->driverdata; */
+    PS2_TextureData* ps2_texture = (PS2_TextureData*) SDL_calloc(1, sizeof(*ps2_texture));
 
-    if(!psp_texture)
+    if(!ps2_texture)
         return -1;
 
-    psp_texture->swizzled = SDL_FALSE;
-    psp_texture->width = texture->w;
-    psp_texture->height = texture->h;
-    psp_texture->textureHeight = TextureNextPow2(texture->h);
-    psp_texture->textureWidth = TextureNextPow2(texture->w);
-    psp_texture->format = PixelFormatToPSPFMT(texture->format);
+    ps2_texture->swizzled = SDL_FALSE;
+    ps2_texture->width = texture->w;
+    ps2_texture->height = texture->h;
+    ps2_texture->textureHeight = TextureNextPow2(texture->h);
+    ps2_texture->textureWidth = TextureNextPow2(texture->w);
+    ps2_texture->format = PixelFormatToPS2FMT(texture->format);
 
-    switch(psp_texture->format)
+    switch(ps2_texture->format)
     {
         case GU_PSM_5650:
         case GU_PSM_5551:
         case GU_PSM_4444:
-            psp_texture->bits = 16;
+            ps2_texture->bits = 16;
             break;
 
         case GU_PSM_8888:
-            psp_texture->bits = 32;
+            ps2_texture->bits = 32;
             break;
 
         default:
             return -1;
     }
 
-    psp_texture->pitch = psp_texture->textureWidth * SDL_BYTESPERPIXEL(texture->format);
-    psp_texture->size = psp_texture->textureHeight*psp_texture->pitch;
-    psp_texture->data = SDL_calloc(1, psp_texture->size);
+    ps2_texture->pitch = ps2_texture->textureWidth * SDL_BYTESPERPIXEL(texture->format);
+    ps2_texture->size = ps2_texture->textureHeight*ps2_texture->pitch;
+    ps2_texture->data = SDL_calloc(1, ps2_texture->size);
 
-    if(!psp_texture->data)
+    if(!ps2_texture->data)
     {
-        SDL_free(psp_texture);
+        SDL_free(ps2_texture);
         return SDL_OutOfMemory();
     }
-    texture->driverdata = psp_texture;
+    texture->driverdata = ps2_texture;
 
     return 0;
 }
 
 static int
-PSP_SetTextureColorMod(SDL_Renderer * renderer, SDL_Texture * texture)
+PS2_SetTextureColorMod(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     return SDL_Unsupported();
 }
@@ -355,36 +355,36 @@ PSP_SetTextureColorMod(SDL_Renderer * renderer, SDL_Texture * texture)
 void
 TextureActivate(SDL_Texture * texture)
 {
-    PSP_TextureData *psp_texture = (PSP_TextureData *) texture->driverdata;
+    PS2_TextureData *ps2_texture = (PS2_TextureData *) texture->driverdata;
     int scaleMode = (texture->scaleMode == SDL_ScaleModeNearest) ? GU_NEAREST : GU_LINEAR;
 
     /* Swizzling is useless with small textures. */
     if (texture->w >= 16 || texture->h >= 16)
     {
-        TextureSwizzle(psp_texture);
+        TextureSwizzle(ps2_texture);
     }
 
     sceGuEnable(GU_TEXTURE_2D);
     sceGuTexWrap(GU_REPEAT, GU_REPEAT);
-    sceGuTexMode(psp_texture->format, 0, 0, psp_texture->swizzled);
+    sceGuTexMode(ps2_texture->format, 0, 0, ps2_texture->swizzled);
     sceGuTexFilter(scaleMode, scaleMode); /* GU_NEAREST good for tile-map */
                                           /* GU_LINEAR good for scaling */
-    sceGuTexImage(0, psp_texture->textureWidth, psp_texture->textureHeight, psp_texture->textureWidth, psp_texture->data);
+    sceGuTexImage(0, ps2_texture->textureWidth, ps2_texture->textureHeight, ps2_texture->textureWidth, ps2_texture->data);
     sceGuTexFunc(GU_TFX_REPLACE, GU_TCC_RGBA);
 }
 
 
 static int
-PSP_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
+PS2_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                    const SDL_Rect * rect, const void *pixels, int pitch)
 {
-/*  PSP_TextureData *psp_texture = (PSP_TextureData *) texture->driverdata; */
+/*  PS2_TextureData *ps2_texture = (PS2_TextureData *) texture->driverdata; */
     const Uint8 *src;
     Uint8 *dst;
     int row, length,dpitch;
     src = pixels;
 
-    PSP_LockTexture(renderer, texture,rect,(void **)&dst, &dpitch);
+    PS2_LockTexture(renderer, texture,rect,(void **)&dst, &dpitch);
     length = rect->w * SDL_BYTESPERPIXEL(texture->format);
     if (length == pitch && length == dpitch) {
         SDL_memcpy(dst, src, length*rect->h);
@@ -401,22 +401,22 @@ PSP_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
 }
 
 static int
-PSP_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
+PS2_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                  const SDL_Rect * rect, void **pixels, int *pitch)
 {
-    PSP_TextureData *psp_texture = (PSP_TextureData *) texture->driverdata;
+    PS2_TextureData *ps2_texture = (PS2_TextureData *) texture->driverdata;
 
     *pixels =
-        (void *) ((Uint8 *) psp_texture->data + rect->y * psp_texture->pitch +
+        (void *) ((Uint8 *) ps2_texture->data + rect->y * ps2_texture->pitch +
                   rect->x * SDL_BYTESPERPIXEL(texture->format));
-    *pitch = psp_texture->pitch;
+    *pitch = ps2_texture->pitch;
     return 0;
 }
 
 static void
-PSP_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture)
+PS2_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
-    PSP_TextureData *psp_texture = (PSP_TextureData *) texture->driverdata;
+    PS2_TextureData *ps2_texture = (PS2_TextureData *) texture->driverdata;
     SDL_Rect rect;
 
     /* We do whole texture updates, at least for now */
@@ -424,29 +424,29 @@ PSP_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     rect.y = 0;
     rect.w = texture->w;
     rect.h = texture->h;
-    PSP_UpdateTexture(renderer, texture, &rect, psp_texture->data, psp_texture->pitch);
+    PS2_UpdateTexture(renderer, texture, &rect, ps2_texture->data, ps2_texture->pitch);
 }
 
 static void
-PSP_SetTextureScaleMode(SDL_Renderer * renderer, SDL_Texture * texture, SDL_ScaleMode scaleMode)
+PS2_SetTextureScaleMode(SDL_Renderer * renderer, SDL_Texture * texture, SDL_ScaleMode scaleMode)
 {
     /* Nothing to do because TextureActivate takes care of it */
 }
 
 static int
-PSP_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
+PS2_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     return 0;
 }
 
 static int
-PSP_QueueSetViewport(SDL_Renderer * renderer, SDL_RenderCommand *cmd)
+PS2_QueueSetViewport(SDL_Renderer * renderer, SDL_RenderCommand *cmd)
 {
     return 0;  /* nothing to do in this backend. */
 }
 
 static int
-PSP_QueueDrawPoints(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_FPoint * points, int count)
+PS2_QueueDrawPoints(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_FPoint * points, int count)
 {
     VertV *verts = (VertV *) SDL_AllocateRenderVertices(renderer, count * sizeof (VertV), 4, &cmd->data.draw.first);
     int i;
@@ -467,7 +467,7 @@ PSP_QueueDrawPoints(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_F
 }
 
 static int
-PSP_QueueFillRects(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_FRect * rects, int count)
+PS2_QueueFillRects(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_FRect * rects, int count)
 {
     VertV *verts = (GLfloat *) SDL_AllocateRenderVertices(renderer, count * 2 * sizeof (VertV), 4, &cmd->data.draw.first);
     int i;
@@ -494,7 +494,7 @@ PSP_QueueFillRects(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_FR
 }
 
 static int
-PSP_QueueCopy(SDL_Renderer * renderer, SDL_RenderCommand *cmd, SDL_Texture * texture,
+PS2_QueueCopy(SDL_Renderer * renderer, SDL_RenderCommand *cmd, SDL_Texture * texture,
              const SDL_Rect * srcrect, const SDL_FRect * dstrect)
 {
     VertTV *verts;
@@ -581,7 +581,7 @@ PSP_QueueCopy(SDL_Renderer * renderer, SDL_RenderCommand *cmd, SDL_Texture * tex
 }
 
 static int
-PSP_QueueCopyEx(SDL_Renderer * renderer, SDL_RenderCommand *cmd, SDL_Texture * texture,
+PS2_QueueCopyEx(SDL_Renderer * renderer, SDL_RenderCommand *cmd, SDL_Texture * texture,
                const SDL_Rect * srcrect, const SDL_FRect * dstrect,
                const double angle, const SDL_FPoint *center, const SDL_RendererFlip flip)
 {
@@ -653,9 +653,9 @@ PSP_QueueCopyEx(SDL_Renderer * renderer, SDL_RenderCommand *cmd, SDL_Texture * t
 }
 
 static void
-PSP_SetBlendMode(SDL_Renderer * renderer, int blendMode)
+PS2_SetBlendMode(SDL_Renderer * renderer, int blendMode)
 {
-    PSP_RenderData *data = (PSP_RenderData *) renderer->driverdata;
+    PS2_RenderData *data = (PS2_RenderData *) renderer->driverdata;
     if (blendMode != data-> currentBlendMode) {
         switch (blendMode) {
         case SDL_BLENDMODE_NONE:
@@ -688,9 +688,9 @@ PSP_SetBlendMode(SDL_Renderer * renderer, int blendMode)
 }
 
 static int
-PSP_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *cmd, void *vertices, size_t vertsize)
+PS2_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *cmd, void *vertices, size_t vertsize)
 {
-    PSP_RenderData *data = (PSP_RenderData *) renderer->driverdata;
+    PS2_RenderData *data = (PS2_RenderData *) renderer->driverdata;
     size_t i;
 
     StartDrawing(renderer);
@@ -698,7 +698,7 @@ PSP_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *cmd, void *verti
     /* note that before the renderer interface change, this would do extrememly small
        batches with sceGuGetMemory()--a few vertices at a time--and it's not clear that
        this won't fail if you try to push 100,000 draw calls in a single batch.
-       I don't know what the limits on PSP hardware are. It might be useful to have
+       I don't know what the limits on PS2 hardware are. It might be useful to have
        rendering backends report a reasonable maximum, so the higher level can flush
        if we appear to be exceeding that. */
     Uint8 *gpumem = (Uint8 *) sceGuGetMemory(vertsize);
@@ -807,7 +807,7 @@ PSP_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *cmd, void *verti
                 const VertTV *verts = (VertTV *) (gpumem + cmd->data.draw.first);
                 const Uint8 alpha = cmd->data.draw.a;
                 TextureActivate(cmd->data.draw.texture);
-                PSP_SetBlendMode(renderer, cmd->data.draw.blend);
+                PS2_SetBlendMode(renderer, cmd->data.draw.blend);
 
                 if(alpha != 255) {  /* !!! FIXME: is this right? */
                     sceGuTexFunc(GU_TFX_MODULATE, GU_TCC_RGBA);
@@ -829,7 +829,7 @@ PSP_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *cmd, void *verti
                 const VertTV *verts = (VertTV *) (gpumem + cmd->data.draw.first);
                 const Uint8 alpha = cmd->data.draw.a;
                 TextureActivate(cmd->data.draw.texture);
-                PSP_SetBlendMode(renderer, cmd->data.draw.blend);
+                PS2_SetBlendMode(renderer, cmd->data.draw.blend);
 
                 if(alpha != 255) {  /* !!! FIXME: is this right? */
                     sceGuTexFunc(GU_TFX_MODULATE, GU_TCC_RGBA);
@@ -858,16 +858,16 @@ PSP_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *cmd, void *verti
 }
 
 static int
-PSP_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
+PS2_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
                     Uint32 pixel_format, void * pixels, int pitch)
 {
     return SDL_Unsupported();
 }
 
 static void
-PSP_RenderPresent(SDL_Renderer * renderer)
+PS2_RenderPresent(SDL_Renderer * renderer)
 {
-    PSP_RenderData *data = (PSP_RenderData *) renderer->driverdata;
+    PS2_RenderData *data = (PS2_RenderData *) renderer->driverdata;
     if(!data->displayListAvail)
         return;
 
@@ -884,26 +884,26 @@ PSP_RenderPresent(SDL_Renderer * renderer)
 }
 
 static void
-PSP_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture)
+PS2_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
-    PSP_RenderData *renderdata = (PSP_RenderData *) renderer->driverdata;
-    PSP_TextureData *psp_texture = (PSP_TextureData *) texture->driverdata;
+    PS2_RenderData *renderdata = (PS2_RenderData *) renderer->driverdata;
+    PS2_TextureData *ps2_texture = (PS2_TextureData *) texture->driverdata;
 
     if (renderdata == 0)
         return;
 
-    if(psp_texture == 0)
+    if(ps2_texture == 0)
         return;
 
-    SDL_free(psp_texture->data);
-    SDL_free(psp_texture);
+    SDL_free(ps2_texture->data);
+    SDL_free(ps2_texture);
     texture->driverdata = NULL;
 }
 
 static void
-PSP_DestroyRenderer(SDL_Renderer * renderer)
+PS2_DestroyRenderer(SDL_Renderer * renderer)
 {
-    PSP_RenderData *data = (PSP_RenderData *) renderer->driverdata;
+    PS2_RenderData *data = (PS2_RenderData *) renderer->driverdata;
     if (data) {
         if (!data->initialized)
             return;
@@ -922,11 +922,11 @@ PSP_DestroyRenderer(SDL_Renderer * renderer)
 }
 
 SDL_Renderer *
-PSP_CreateRenderer(SDL_Window * window, Uint32 flags)
+PS2_CreateRenderer(SDL_Window * window, Uint32 flags)
 {
 
     SDL_Renderer *renderer;
-    PSP_RenderData *data;
+    PS2_RenderData *data;
         int pixelformat;
     renderer = (SDL_Renderer *) SDL_calloc(1, sizeof(*renderer));
     if (!renderer) {
@@ -934,35 +934,35 @@ PSP_CreateRenderer(SDL_Window * window, Uint32 flags)
         return NULL;
     }
 
-    data = (PSP_RenderData *) SDL_calloc(1, sizeof(*data));
+    data = (PS2_RenderData *) SDL_calloc(1, sizeof(*data));
     if (!data) {
-        PSP_DestroyRenderer(renderer);
+        PS2_DestroyRenderer(renderer);
         SDL_OutOfMemory();
         return NULL;
     }
 
 
-    renderer->WindowEvent = PSP_WindowEvent;
-    renderer->CreateTexture = PSP_CreateTexture;
-    renderer->SetTextureColorMod = PSP_SetTextureColorMod;
-    renderer->UpdateTexture = PSP_UpdateTexture;
-    renderer->LockTexture = PSP_LockTexture;
-    renderer->UnlockTexture = PSP_UnlockTexture;
-    renderer->SetTextureScaleMode = PSP_SetTextureScaleMode;
-    renderer->SetRenderTarget = PSP_SetRenderTarget;
-    renderer->QueueSetViewport = PSP_QueueSetViewport;
-    renderer->QueueSetDrawColor = PSP_QueueSetViewport;  /* SetViewport and SetDrawColor are (currently) no-ops. */
-    renderer->QueueDrawPoints = PSP_QueueDrawPoints;
-    renderer->QueueDrawLines = PSP_QueueDrawPoints;  /* lines and points queue vertices the same way. */
-    renderer->QueueFillRects = PSP_QueueFillRects;
-    renderer->QueueCopy = PSP_QueueCopy;
-    renderer->QueueCopyEx = PSP_QueueCopyEx;
-    renderer->RunCommandQueue = PSP_RunCommandQueue;
-    renderer->RenderReadPixels = PSP_RenderReadPixels;
-    renderer->RenderPresent = PSP_RenderPresent;
-    renderer->DestroyTexture = PSP_DestroyTexture;
-    renderer->DestroyRenderer = PSP_DestroyRenderer;
-    renderer->info = PSP_RenderDriver.info;
+    renderer->WindowEvent = PS2_WindowEvent;
+    renderer->CreateTexture = PS2_CreateTexture;
+    renderer->SetTextureColorMod = PS2_SetTextureColorMod;
+    renderer->UpdateTexture = PS2_UpdateTexture;
+    renderer->LockTexture = PS2_LockTexture;
+    renderer->UnlockTexture = PS2_UnlockTexture;
+    renderer->SetTextureScaleMode = PS2_SetTextureScaleMode;
+    renderer->SetRenderTarget = PS2_SetRenderTarget;
+    renderer->QueueSetViewport = PS2_QueueSetViewport;
+    renderer->QueueSetDrawColor = PS2_QueueSetViewport;  /* SetViewport and SetDrawColor are (currently) no-ops. */
+    renderer->QueueDrawPoints = PS2_QueueDrawPoints;
+    renderer->QueueDrawLines = PS2_QueueDrawPoints;  /* lines and points queue vertices the same way. */
+    renderer->QueueFillRects = PS2_QueueFillRects;
+    renderer->QueueCopy = PS2_QueueCopy;
+    renderer->QueueCopyEx = PS2_QueueCopyEx;
+    renderer->RunCommandQueue = PS2_RunCommandQueue;
+    renderer->RenderReadPixels = PS2_RenderReadPixels;
+    renderer->RenderPresent = PS2_RenderPresent;
+    renderer->DestroyTexture = PS2_DestroyTexture;
+    renderer->DestroyRenderer = PS2_DestroyRenderer;
+    renderer->info = PS2_RenderDriver.info;
     renderer->info.flags = (SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
     renderer->driverdata = data;
     renderer->window = window;
@@ -977,19 +977,19 @@ PSP_CreateRenderer(SDL_Window * window, Uint32 flags)
         data->vsync = SDL_FALSE;
     }
 
-    pixelformat=PixelFormatToPSPFMT(SDL_GetWindowPixelFormat(window));
+    pixelformat=PixelFormatToPS2FMT(SDL_GetWindowPixelFormat(window));
     switch(pixelformat)
     {
         case GU_PSM_4444:
         case GU_PSM_5650:
         case GU_PSM_5551:
-            data->frontbuffer = (unsigned int *)(PSP_FRAME_BUFFER_SIZE<<1);
+            data->frontbuffer = (unsigned int *)(PS2_FRAME_BUFFER_SIZE<<1);
             data->backbuffer =  (unsigned int *)(0);
             data->bpp = 2;
             data->psm = pixelformat;
             break;
         default:
-            data->frontbuffer = (unsigned int *)(PSP_FRAME_BUFFER_SIZE<<2);
+            data->frontbuffer = (unsigned int *)(PS2_FRAME_BUFFER_SIZE<<2);
             data->backbuffer =  (unsigned int *)(0);
             data->bpp = 4;
             data->psm = GU_PSM_8888;
@@ -999,18 +999,18 @@ PSP_CreateRenderer(SDL_Window * window, Uint32 flags)
     sceGuInit();
     /* setup GU */
     sceGuStart(GU_DIRECT, DisplayList);
-    sceGuDrawBuffer(data->psm, data->frontbuffer, PSP_FRAME_BUFFER_WIDTH);
-    sceGuDispBuffer(PSP_SCREEN_WIDTH, PSP_SCREEN_HEIGHT, data->backbuffer, PSP_FRAME_BUFFER_WIDTH);
+    sceGuDrawBuffer(data->psm, data->frontbuffer, PS2_FRAME_BUFFER_WIDTH);
+    sceGuDispBuffer(PS2_SCREEN_WIDTH, PS2_SCREEN_HEIGHT, data->backbuffer, PS2_FRAME_BUFFER_WIDTH);
 
 
-    sceGuOffset(2048 - (PSP_SCREEN_WIDTH>>1), 2048 - (PSP_SCREEN_HEIGHT>>1));
-    sceGuViewport(2048, 2048, PSP_SCREEN_WIDTH, PSP_SCREEN_HEIGHT);
+    sceGuOffset(2048 - (PS2_SCREEN_WIDTH>>1), 2048 - (PS2_SCREEN_HEIGHT>>1));
+    sceGuViewport(2048, 2048, PS2_SCREEN_WIDTH, PS2_SCREEN_HEIGHT);
 
     data->frontbuffer = vabsptr(data->frontbuffer);
     data->backbuffer = vabsptr(data->backbuffer);
 
     /* Scissoring */
-    sceGuScissor(0, 0, PSP_SCREEN_WIDTH, PSP_SCREEN_HEIGHT);
+    sceGuScissor(0, 0, PS2_SCREEN_WIDTH, PS2_SCREEN_HEIGHT);
     sceGuEnable(GU_SCISSOR_TEST);
 
     /* Backface culling */
@@ -1036,10 +1036,10 @@ PSP_CreateRenderer(SDL_Window * window, Uint32 flags)
     return renderer;
 }
 
-SDL_RenderDriver PSP_RenderDriver = {
-    .CreateRenderer = PSP_CreateRenderer,
+SDL_RenderDriver PS2_RenderDriver = {
+    .CreateRenderer = PS2_CreateRenderer,
     .info = {
-        .name = "PSP",
+        .name = "PS2",
         .flags = SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE,
         .num_texture_formats = 4,
         .texture_formats = { [0] = SDL_PIXELFORMAT_BGR565,
@@ -1052,7 +1052,7 @@ SDL_RenderDriver PSP_RenderDriver = {
      }
 };
 
-#endif /* SDL_VIDEO_RENDER_PSP */
+#endif /* SDL_VIDEO_RENDER_PS2 */
 
 /* vi: set ts=4 sw=4 expandtab: */
 

@@ -20,14 +20,14 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_PSP
+#if SDL_VIDEO_DRIVER_PS2
 
 #include <stdlib.h>
 #include <string.h>
 
 #include "SDL_error.h"
-#include "SDL_pspvideo.h"
-#include "SDL_pspgl_c.h"
+#include "SDL_ps2video.h"
+#include "SDL_ps2gl_c.h"
 
 /*****************************************************************************/
 /* SDL OpenGL/OpenGL ES functions                                            */
@@ -45,25 +45,25 @@
     } while (0)
 
 int
-PSP_GL_LoadLibrary(_THIS, const char *path)
+PS2_GL_LoadLibrary(_THIS, const char *path)
 {
   return 0;
 }
 
-/* pspgl doesn't provide this call, so stub it out since SDL requires it.
+/* ps2gl doesn't provide this call, so stub it out since SDL requires it.
 #define GLSTUB(func,params) void func params {}
 
 GLSTUB(glOrtho,(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top,
                     GLdouble zNear, GLdouble zFar))
 */
 void *
-PSP_GL_GetProcAddress(_THIS, const char *proc)
+PS2_GL_GetProcAddress(_THIS, const char *proc)
 {
         return eglGetProcAddress(proc);
 }
 
 void
-PSP_GL_UnloadLibrary(_THIS)
+PS2_GL_UnloadLibrary(_THIS)
 {
         eglTerminate(_this->gl_data->display);
 }
@@ -72,7 +72,7 @@ static EGLint width = 480;
 static EGLint height = 272;
 
 SDL_GLContext
-PSP_GL_CreateContext(_THIS, SDL_Window * window)
+PS2_GL_CreateContext(_THIS, SDL_Window * window)
 {
 
     SDL_WindowData *wdata = (SDL_WindowData *) window->driverdata;
@@ -86,7 +86,7 @@ PSP_GL_CreateContext(_THIS, SDL_Window * window)
         int i;
 
 
-    /* EGL init taken from glutCreateWindow() in PSPGL's glut.c. */
+    /* EGL init taken from glutCreateWindow() in PS2GL's glut.c. */
         EGLCHK(display = eglGetDisplay(0));
         EGLCHK(eglInitialize(display, NULL, NULL));
     wdata->uses_gles = SDL_TRUE;
@@ -140,7 +140,7 @@ PSP_GL_CreateContext(_THIS, SDL_Window * window)
 }
 
 int
-PSP_GL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
+PS2_GL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
 {
         if (!eglMakeCurrent(_this->gl_data->display, _this->gl_data->surface,
                           _this->gl_data->surface, _this->gl_data->context))
@@ -151,7 +151,7 @@ PSP_GL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
 }
 
 int
-PSP_GL_SetSwapInterval(_THIS, int interval)
+PS2_GL_SetSwapInterval(_THIS, int interval)
 {
     EGLBoolean status;
     status = eglSwapInterval(_this->gl_data->display, interval);
@@ -165,13 +165,13 @@ PSP_GL_SetSwapInterval(_THIS, int interval)
 }
 
 int
-PSP_GL_GetSwapInterval(_THIS)
+PS2_GL_GetSwapInterval(_THIS)
 {
     return _this->gl_data->swapinterval;
 }
 
 int
-PSP_GL_SwapWindow(_THIS, SDL_Window * window)
+PS2_GL_SwapWindow(_THIS, SDL_Window * window)
 {
     if (!eglSwapBuffers(_this->gl_data->display, _this->gl_data->surface)) {
         return SDL_SetError("eglSwapBuffers() failed");
@@ -180,13 +180,13 @@ PSP_GL_SwapWindow(_THIS, SDL_Window * window)
 }
 
 void
-PSP_GL_DeleteContext(_THIS, SDL_GLContext context)
+PS2_GL_DeleteContext(_THIS, SDL_GLContext context)
 {
     SDL_VideoData *phdata = (SDL_VideoData *) _this->driverdata;
     EGLBoolean status;
 
     if (phdata->egl_initialized != SDL_TRUE) {
-        SDL_SetError("PSP: GLES initialization failed, no OpenGL ES support");
+        SDL_SetError("PS2: GLES initialization failed, no OpenGL ES support");
         return;
     }
 
@@ -196,7 +196,7 @@ PSP_GL_DeleteContext(_THIS, SDL_GLContext context)
             status = eglDestroyContext(_this->gl_data->display, context);
             if (status != EGL_TRUE) {
                 /* Error during OpenGL ES context destroying */
-                SDL_SetError("PSP: OpenGL ES context destroy error");
+                SDL_SetError("PS2: OpenGL ES context destroy error");
                 return;
             }
         }
@@ -205,6 +205,6 @@ PSP_GL_DeleteContext(_THIS, SDL_GLContext context)
     return;
 }
 
-#endif /* SDL_VIDEO_DRIVER_PSP */
+#endif /* SDL_VIDEO_DRIVER_PS2 */
 
 /* vi: set ts=4 sw=4 expandtab: */

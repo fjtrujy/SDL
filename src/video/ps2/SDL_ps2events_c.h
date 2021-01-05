@@ -19,6 +19,13 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "SDL_pspvideo.h"
+#include "SDL_ps2video.h"
 
-/* Functions to be exported */
+/* Variables and functions exported by SDL_sysevents.c to other parts
+   of the native video subsystem (SDL_sysvideo.c)
+*/
+extern void PS2_InitOSKeymap(_THIS);
+extern void PS2_PumpEvents(_THIS);
+
+/* end of SDL_ps2events_c.h ... */
+

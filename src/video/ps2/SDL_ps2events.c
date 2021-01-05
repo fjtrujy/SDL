@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_PSP
+#if SDL_VIDEO_DRIVER_PS2
 
 /* Being a null driver, there's no event stream. We just define stubs for
    most of the API. */
@@ -29,17 +29,17 @@
 #include "../../events/SDL_sysevents.h"
 #include "../../events/SDL_events_c.h"
 #include "../../events/SDL_keyboard_c.h"
-#include "SDL_pspvideo.h"
-#include "SDL_pspevents_c.h"
+#include "SDL_ps2video.h"
+#include "SDL_ps2events_c.h"
 #include "SDL_keyboard.h"
 #include "../../thread/SDL_systhread.h"
-#include <psphprm.h>
+#include <ps2hprm.h>
 
-#ifdef PSPIRKEYB
-#include <pspirkeyb.h>
-#include <pspirkeyb_rawkeys.h>
+#ifdef PS2IRKEYB
+#include <ps2irkeyb.h>
+#include <ps2irkeyb_rawkeys.h>
 
-#define IRKBD_CONFIG_FILE     NULL    /* this will take ms0:/seplugins/pspirkeyb.ini */
+#define IRKBD_CONFIG_FILE     NULL    /* this will take ms0:/seplugins/ps2irkeyb.ini */
 
 static int irkbd_ready = 0;
 static SDL_Keycode keymap[256];
@@ -52,13 +52,13 @@ static int running = 0;
 static struct {
     enum PspHprmKeys id;
     SDL_Keycode sym;
-} keymap_psp[] = {
-    { PSP_HPRM_PLAYPAUSE, SDLK_F10 },
-    { PSP_HPRM_FORWARD,   SDLK_F11 },
-    { PSP_HPRM_BACK,      SDLK_F12 },
-    { PSP_HPRM_VOL_UP,    SDLK_F13 },
-    { PSP_HPRM_VOL_DOWN,  SDLK_F14 },
-    { PSP_HPRM_HOLD,      SDLK_F15 }
+} keymap_ps2[] = {
+    { PS2_HPRM_PLAYPAUSE, SDLK_F10 },
+    { PS2_HPRM_FORWARD,   SDLK_F11 },
+    { PS2_HPRM_BACK,      SDLK_F12 },
+    { PS2_HPRM_VOL_UP,    SDLK_F13 },
+    { PS2_HPRM_VOL_DOWN,  SDLK_F14 },
+    { PS2_HPRM_HOLD,      SDLK_F15 }
 };
 
 int EventUpdate(void *data)
@@ -73,7 +73,7 @@ int EventUpdate(void *data)
         return 0;
 }
 
-void PSP_PumpEvents(_THIS)
+void PS2_PumpEvents(_THIS)
 {
     int i;
     enum PspHprmKeys keys;
@@ -89,29 +89,29 @@ void PSP_PumpEvents(_THIS)
     changed = old_keys ^ keys;
     old_keys = keys;
     if(changed) {
-        for(i=0; i<sizeof(keymap_psp)/sizeof(keymap_psp[0]); i++) {
-            if(changed & keymap_psp[i].id) {
-                sym.scancode = keymap_psp[i].id;
-                sym.sym = keymap_psp[i].sym;
+        for(i=0; i<sizeof(keymap_ps2)/sizeof(keymap_ps2[0]); i++) {
+            if(changed & keymap_ps2[i].id) {
+                sym.scancode = keymap_ps2[i].id;
+                sym.sym = keymap_ps2[i].sym;
 
                 /* out of date
-                SDL_PrivateKeyboard((keys & keymap_psp[i].id) ?
+                SDL_PrivateKeyboard((keys & keymap_ps2[i].id) ?
                             SDL_PRESSED : SDL_RELEASED,
                             &sym);
         */
-                SDL_SendKeyboardKey((keys & keymap_psp[i].id) ?
-                                    SDL_PRESSED : SDL_RELEASED, SDL_GetScancodeFromKey(keymap_psp[i].sym));
+                SDL_SendKeyboardKey((keys & keymap_ps2[i].id) ?
+                                    SDL_PRESSED : SDL_RELEASED, SDL_GetScancodeFromKey(keymap_ps2[i].sym));
             }
         }
     }
 
-#ifdef PSPIRKEYB
+#ifdef PS2IRKEYB
     if (irkbd_ready) {
             unsigned char buffer[255];
         int i, length, count;
         SIrKeybScanCodeData *scanData;
 
-            if(pspIrKeybReadinput(buffer, &length) >= 0) {
+            if(ps2IrKeybReadinput(buffer, &length) >= 0) {
                 if((length % sizeof(SIrKeybScanCodeData)) == 0){
                     count = length / sizeof(SIrKeybScanCodeData);
                     for( i=0; i < count; i++ ) {
@@ -123,7 +123,7 @@ void PSP_PumpEvents(_THIS)
                 sym.sym = keymap[raw];
                 /* not tested */
                 /* SDL_PrivateKeyboard(pressed?SDL_PRESSED:SDL_RELEASED, &sym); */
-                SDL_SendKeyboardKey((keys & keymap_psp[i].id) ?
+                SDL_SendKeyboardKey((keys & keymap_ps2[i].id) ?
                                     SDL_PRESSED : SDL_RELEASED, SDL_GetScancodeFromKey(keymap[raw]));
 
                 }
@@ -136,9 +136,9 @@ void PSP_PumpEvents(_THIS)
     return;
 }
 
-void PSP_InitOSKeymap(_THIS)
+void PS2_InitOSKeymap(_THIS)
 {
-#ifdef PSPIRKEYB
+#ifdef PS2IRKEYB
     int i;
     for (i=0; i<SDL_TABLESIZE(keymap); ++i)
         keymap[i] = SDLK_UNKNOWN;
@@ -246,13 +246,13 @@ void PSP_InitOSKeymap(_THIS)
 #endif
 }
 
-void PSP_EventInit(_THIS)
+void PS2_EventInit(_THIS)
 {
-#ifdef PSPIRKEYB
-    int outputmode = PSP_IRKBD_OUTPUT_MODE_SCANCODE;
-    int ret = pspIrKeybInit(IRKBD_CONFIG_FILE, 0);
-    if (ret == PSP_IRKBD_RESULT_OK) {
-            pspIrKeybOutputMode(outputmode);
+#ifdef PS2IRKEYB
+    int outputmode = PS2_IRKBD_OUTPUT_MODE_SCANCODE;
+    int ret = ps2IrKeybInit(IRKBD_CONFIG_FILE, 0);
+    if (ret == PS2_IRKBD_RESULT_OK) {
+            ps2IrKeybOutputMode(outputmode);
         irkbd_ready = 1;
     } else {
         irkbd_ready = 0;
@@ -264,27 +264,27 @@ void PSP_EventInit(_THIS)
         return;
     }
     running = 1;
-    if((thread = SDL_CreateThreadInternal(EventUpdate, "PSPInputThread", 4096, NULL)) == NULL) {
+    if((thread = SDL_CreateThreadInternal(EventUpdate, "PS2InputThread", 4096, NULL)) == NULL) {
         SDL_SetError("Can't create input thread");
         return;
     }
 }
 
-void PSP_EventQuit(_THIS)
+void PS2_EventQuit(_THIS)
 {
     running = 0;
     SDL_WaitThread(thread, NULL);
     SDL_DestroySemaphore(event_sem);
-#ifdef PSPIRKEYB
+#ifdef PS2IRKEYB
     if (irkbd_ready) {
-            pspIrKeybFinish();
+            ps2IrKeybFinish();
         irkbd_ready = 0;
     }
 #endif
 }
 
-/* end of SDL_pspevents.c ... */
+/* end of SDL_ps2events.c ... */
 
-#endif /* SDL_VIDEO_DRIVER_PSP */
+#endif /* SDL_VIDEO_DRIVER_PS2 */
 
 /* vi: set ts=4 sw=4 expandtab: */

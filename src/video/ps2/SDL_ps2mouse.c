@@ -18,14 +18,24 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+#include "../../SDL_internal.h"
 
-#include "SDL_pspvideo.h"
+#if SDL_VIDEO_DRIVER_PS2
 
-/* Variables and functions exported by SDL_sysevents.c to other parts
-   of the native video subsystem (SDL_sysvideo.c)
-*/
-extern void PSP_InitOSKeymap(_THIS);
-extern void PSP_PumpEvents(_THIS);
+#include <stdio.h>
 
-/* end of SDL_pspevents_c.h ... */
+#include "SDL_error.h"
+#include "SDL_mouse.h"
+#include "../../events/SDL_events_c.h"
 
+#include "SDL_ps2mouse_c.h"
+
+
+/* The implementation dependent data for the window manager cursor */
+struct WMcursor {
+    int unused;
+};
+
+#endif /* SDL_VIDEO_DRIVER_PS2 */
+
+/* vi: set ts=4 sw=4 expandtab: */

@@ -21,7 +21,7 @@
 
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_PSP
+#if SDL_VIDEO_DRIVER_PS2
 
 /* SDL internals */
 #include "../SDL_sysvideo.h"
@@ -34,17 +34,17 @@
 
 
 
-/* PSP declarations */
-#include "SDL_pspvideo.h"
-#include "SDL_pspevents_c.h"
-#include "SDL_pspgl_c.h"
+/* PS2 declarations */
+#include "SDL_ps2video.h"
+#include "SDL_ps2events_c.h"
+#include "SDL_ps2gl_c.h"
 
 /* unused
-static SDL_bool PSP_initialized = SDL_FALSE;
+static SDL_bool PS2_initialized = SDL_FALSE;
 */
 
 static void
-PSP_Destroy(SDL_VideoDevice * device)
+PS2_Destroy(SDL_VideoDevice * device)
 {
 /*    SDL_VideoData *phdata = (SDL_VideoData *) device->driverdata; */
 
@@ -54,7 +54,7 @@ PSP_Destroy(SDL_VideoDevice * device)
 }
 
 static SDL_VideoDevice *
-PSP_Create()
+PS2_Create()
 {
     SDL_VideoDevice *device;
     SDL_VideoData *phdata;
@@ -67,7 +67,7 @@ PSP_Create()
         return NULL;
     }
 
-    /* Initialize internal PSP specific data */
+    /* Initialize internal PS2 specific data */
     phdata = (SDL_VideoData *) SDL_calloc(1, sizeof(SDL_VideoData));
     if (phdata == NULL) {
         SDL_OutOfMemory();
@@ -93,60 +93,60 @@ PSP_Create()
     device->num_displays = 0;
 
     /* Set device free function */
-    device->free = PSP_Destroy;
+    device->free = PS2_Destroy;
 
     /* Setup all functions which we can handle */
-    device->VideoInit = PSP_VideoInit;
-    device->VideoQuit = PSP_VideoQuit;
-    device->GetDisplayModes = PSP_GetDisplayModes;
-    device->SetDisplayMode = PSP_SetDisplayMode;
-    device->CreateSDLWindow = PSP_CreateWindow;
-    device->CreateSDLWindowFrom = PSP_CreateWindowFrom;
-    device->SetWindowTitle = PSP_SetWindowTitle;
-    device->SetWindowIcon = PSP_SetWindowIcon;
-    device->SetWindowPosition = PSP_SetWindowPosition;
-    device->SetWindowSize = PSP_SetWindowSize;
-    device->ShowWindow = PSP_ShowWindow;
-    device->HideWindow = PSP_HideWindow;
-    device->RaiseWindow = PSP_RaiseWindow;
-    device->MaximizeWindow = PSP_MaximizeWindow;
-    device->MinimizeWindow = PSP_MinimizeWindow;
-    device->RestoreWindow = PSP_RestoreWindow;
-    device->SetWindowGrab = PSP_SetWindowGrab;
-    device->DestroyWindow = PSP_DestroyWindow;
+    device->VideoInit = PS2_VideoInit;
+    device->VideoQuit = PS2_VideoQuit;
+    device->GetDisplayModes = PS2_GetDisplayModes;
+    device->SetDisplayMode = PS2_SetDisplayMode;
+    device->CreateSDLWindow = PS2_CreateWindow;
+    device->CreateSDLWindowFrom = PS2_CreateWindowFrom;
+    device->SetWindowTitle = PS2_SetWindowTitle;
+    device->SetWindowIcon = PS2_SetWindowIcon;
+    device->SetWindowPosition = PS2_SetWindowPosition;
+    device->SetWindowSize = PS2_SetWindowSize;
+    device->ShowWindow = PS2_ShowWindow;
+    device->HideWindow = PS2_HideWindow;
+    device->RaiseWindow = PS2_RaiseWindow;
+    device->MaximizeWindow = PS2_MaximizeWindow;
+    device->MinimizeWindow = PS2_MinimizeWindow;
+    device->RestoreWindow = PS2_RestoreWindow;
+    device->SetWindowGrab = PS2_SetWindowGrab;
+    device->DestroyWindow = PS2_DestroyWindow;
 #if 0
-    device->GetWindowWMInfo = PSP_GetWindowWMInfo;
+    device->GetWindowWMInfo = PS2_GetWindowWMInfo;
 #endif
-    device->GL_LoadLibrary = PSP_GL_LoadLibrary;
-    device->GL_GetProcAddress = PSP_GL_GetProcAddress;
-    device->GL_UnloadLibrary = PSP_GL_UnloadLibrary;
-    device->GL_CreateContext = PSP_GL_CreateContext;
-    device->GL_MakeCurrent = PSP_GL_MakeCurrent;
-    device->GL_SetSwapInterval = PSP_GL_SetSwapInterval;
-    device->GL_GetSwapInterval = PSP_GL_GetSwapInterval;
-    device->GL_SwapWindow = PSP_GL_SwapWindow;
-    device->GL_DeleteContext = PSP_GL_DeleteContext;
-    device->HasScreenKeyboardSupport = PSP_HasScreenKeyboardSupport;
-    device->ShowScreenKeyboard = PSP_ShowScreenKeyboard;
-    device->HideScreenKeyboard = PSP_HideScreenKeyboard;
-    device->IsScreenKeyboardShown = PSP_IsScreenKeyboardShown;
+    device->GL_LoadLibrary = PS2_GL_LoadLibrary;
+    device->GL_GetProcAddress = PS2_GL_GetProcAddress;
+    device->GL_UnloadLibrary = PS2_GL_UnloadLibrary;
+    device->GL_CreateContext = PS2_GL_CreateContext;
+    device->GL_MakeCurrent = PS2_GL_MakeCurrent;
+    device->GL_SetSwapInterval = PS2_GL_SetSwapInterval;
+    device->GL_GetSwapInterval = PS2_GL_GetSwapInterval;
+    device->GL_SwapWindow = PS2_GL_SwapWindow;
+    device->GL_DeleteContext = PS2_GL_DeleteContext;
+    device->HasScreenKeyboardSupport = PS2_HasScreenKeyboardSupport;
+    device->ShowScreenKeyboard = PS2_ShowScreenKeyboard;
+    device->HideScreenKeyboard = PS2_HideScreenKeyboard;
+    device->IsScreenKeyboardShown = PS2_IsScreenKeyboardShown;
 
-    device->PumpEvents = PSP_PumpEvents;
+    device->PumpEvents = PS2_PumpEvents;
 
     return device;
 }
 
-VideoBootStrap PSP_bootstrap = {
-    "PSP",
-    "PSP Video Driver",
-    PSP_Create
+VideoBootStrap PS2_bootstrap = {
+    "PS2",
+    "PS2 Video Driver",
+    PS2_Create
 };
 
 /*****************************************************************************/
 /* SDL Video and Display initialization/handling functions                   */
 /*****************************************************************************/
 int
-PSP_VideoInit(_THIS)
+PS2_VideoInit(_THIS)
 {
     SDL_VideoDisplay display;
     SDL_DisplayMode current_mode;
@@ -173,19 +173,19 @@ PSP_VideoInit(_THIS)
 }
 
 void
-PSP_VideoQuit(_THIS)
+PS2_VideoQuit(_THIS)
 {
 
 }
 
 void
-PSP_GetDisplayModes(_THIS, SDL_VideoDisplay * display)
+PS2_GetDisplayModes(_THIS, SDL_VideoDisplay * display)
 {
 
 }
 
 int
-PSP_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
+PS2_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
 {
     return 0;
 }
@@ -202,7 +202,7 @@ PSP_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
     } while (0)
 
 int
-PSP_CreateWindow(_THIS, SDL_Window * window)
+PS2_CreateWindow(_THIS, SDL_Window * window)
 {
     SDL_WindowData *wdata;
 
@@ -221,58 +221,58 @@ PSP_CreateWindow(_THIS, SDL_Window * window)
 }
 
 int
-PSP_CreateWindowFrom(_THIS, SDL_Window * window, const void *data)
+PS2_CreateWindowFrom(_THIS, SDL_Window * window, const void *data)
 {
     return SDL_Unsupported();
 }
 
 void
-PSP_SetWindowTitle(_THIS, SDL_Window * window)
+PS2_SetWindowTitle(_THIS, SDL_Window * window)
 {
 }
 void
-PSP_SetWindowIcon(_THIS, SDL_Window * window, SDL_Surface * icon)
+PS2_SetWindowIcon(_THIS, SDL_Window * window, SDL_Surface * icon)
 {
 }
 void
-PSP_SetWindowPosition(_THIS, SDL_Window * window)
+PS2_SetWindowPosition(_THIS, SDL_Window * window)
 {
 }
 void
-PSP_SetWindowSize(_THIS, SDL_Window * window)
+PS2_SetWindowSize(_THIS, SDL_Window * window)
 {
 }
 void
-PSP_ShowWindow(_THIS, SDL_Window * window)
+PS2_ShowWindow(_THIS, SDL_Window * window)
 {
 }
 void
-PSP_HideWindow(_THIS, SDL_Window * window)
+PS2_HideWindow(_THIS, SDL_Window * window)
 {
 }
 void
-PSP_RaiseWindow(_THIS, SDL_Window * window)
+PS2_RaiseWindow(_THIS, SDL_Window * window)
 {
 }
 void
-PSP_MaximizeWindow(_THIS, SDL_Window * window)
+PS2_MaximizeWindow(_THIS, SDL_Window * window)
 {
 }
 void
-PSP_MinimizeWindow(_THIS, SDL_Window * window)
+PS2_MinimizeWindow(_THIS, SDL_Window * window)
 {
 }
 void
-PSP_RestoreWindow(_THIS, SDL_Window * window)
+PS2_RestoreWindow(_THIS, SDL_Window * window)
 {
 }
 void
-PSP_SetWindowGrab(_THIS, SDL_Window * window, SDL_bool grabbed)
+PS2_SetWindowGrab(_THIS, SDL_Window * window, SDL_bool grabbed)
 {
 
 }
 void
-PSP_DestroyWindow(_THIS, SDL_Window * window)
+PS2_DestroyWindow(_THIS, SDL_Window * window)
 {
 }
 
@@ -281,7 +281,7 @@ PSP_DestroyWindow(_THIS, SDL_Window * window)
 /*****************************************************************************/
 #if 0
 SDL_bool
-PSP_GetWindowWMInfo(_THIS, SDL_Window * window, struct SDL_SysWMinfo *info)
+PS2_GetWindowWMInfo(_THIS, SDL_Window * window, struct SDL_SysWMinfo *info)
 {
     if (info->version.major <= SDL_MAJOR_VERSION) {
         return SDL_TRUE;
@@ -298,22 +298,22 @@ PSP_GetWindowWMInfo(_THIS, SDL_Window * window, struct SDL_SysWMinfo *info)
 
 
 /* TO Write Me */
-SDL_bool PSP_HasScreenKeyboardSupport(_THIS)
+SDL_bool PS2_HasScreenKeyboardSupport(_THIS)
 {
     return SDL_FALSE;
 }
-void PSP_ShowScreenKeyboard(_THIS, SDL_Window *window)
+void PS2_ShowScreenKeyboard(_THIS, SDL_Window *window)
 {
 }
-void PSP_HideScreenKeyboard(_THIS, SDL_Window *window)
+void PS2_HideScreenKeyboard(_THIS, SDL_Window *window)
 {
 }
-SDL_bool PSP_IsScreenKeyboardShown(_THIS, SDL_Window *window)
+SDL_bool PS2_IsScreenKeyboardShown(_THIS, SDL_Window *window)
 {
     return SDL_FALSE;
 }
 
 
-#endif /* SDL_VIDEO_DRIVER_PSP */
+#endif /* SDL_VIDEO_DRIVER_PS2 */
 
 /* vi: set ts=4 sw=4 expandtab: */

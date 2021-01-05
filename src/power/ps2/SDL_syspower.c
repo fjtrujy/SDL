@@ -22,14 +22,14 @@
 #include "../../SDL_internal.h"
 
 #ifndef SDL_POWER_DISABLED
-#if SDL_POWER_PSP
+#if SDL_POWER_PS2
 
 #include "SDL_power.h"
-#include <psppower.h>
+#include <ps2power.h>
 
 
 SDL_bool
-SDL_GetPowerInfo_PSP(SDL_PowerState * state, int *seconds,
+SDL_GetPowerInfo_PS2(SDL_PowerState * state, int *seconds,
                             int *percent)
 {
     int battery = scePowerIsBatteryExist();
@@ -59,10 +59,10 @@ SDL_GetPowerInfo_PSP(SDL_PowerState * state, int *seconds,
     }
 
 
-    return SDL_TRUE;            /* always the definitive answer on PSP. */
+    return SDL_TRUE;            /* always the definitive answer on PS2. */
 }
 
-#endif /* SDL_POWER_PSP */
+#endif /* SDL_POWER_PS2 */
 #endif /* SDL_POWER_DISABLED */
 
 /* vi: set ts=4 sw=4 expandtab: */

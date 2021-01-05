@@ -20,9 +20,9 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_THREAD_PSP
+#if SDL_THREAD_PS2
 
-/* Semaphore functions for the PSP. */
+/* Semaphore functions for the PS2. */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,8 +30,8 @@
 #include "SDL_error.h"
 #include "SDL_thread.h"
 
-#include <pspthreadman.h>
-#include <pspkerror.h>
+#include <ps2threadman.h>
+#include <ps2kerror.h>
 
 struct SDL_semaphore {
     SceUID  semid;
@@ -155,7 +155,7 @@ int SDL_SemPost(SDL_sem *sem)
     return 0;
 }
 
-#endif /* SDL_THREAD_PSP */
+#endif /* SDL_THREAD_PS2 */
 
 /* vim: ts=4 sw=4
  */

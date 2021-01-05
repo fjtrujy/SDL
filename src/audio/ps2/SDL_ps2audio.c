@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_AUDIO_DRIVER_PSP
+#if SDL_AUDIO_DRIVER_PS2
 
 #include <stdio.h>
 #include <string.h>
@@ -33,16 +33,16 @@
 #include "../SDL_audio_c.h"
 #include "../SDL_audiodev_c.h"
 #include "../SDL_sysaudio.h"
-#include "SDL_pspaudio.h"
+#include "SDL_ps2audio.h"
 
-#include <pspaudio.h>
-#include <pspthreadman.h>
+#include <ps2audio.h>
+#include <ps2threadman.h>
 
-/* The tag name used by PSP audio */
-#define PSPAUDIO_DRIVER_NAME         "psp"
+/* The tag name used by PS2 audio */
+#define PS2AUDIO_DRIVER_NAME         "ps2"
 
 static int
-PSPAUDIO_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
+PS2AUDIO_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
 {
     int format, mixlen, i;
     this->hidden = (struct SDL_PrivateAudioData *)
@@ -61,7 +61,7 @@ PSPAUDIO_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
     }
 
     /* The sample count must be a multiple of 64. */
-    this->spec.samples = PSP_AUDIO_SAMPLE_ALIGN(this->spec.samples);
+    this->spec.samples = PS2_AUDIO_SAMPLE_ALIGN(this->spec.samples);
     this->spec.freq = 44100;
 
     /* Update the fragment size as size in bytes. */
@@ -78,12 +78,12 @@ PSPAUDIO_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
 
     /* Setup the hardware channel. */
     if (this->spec.channels == 1) {
-        format = PSP_AUDIO_FORMAT_MONO;
+        format = PS2_AUDIO_FORMAT_MONO;
     } else {
         this->spec.channels = 2;
-        format = PSP_AUDIO_FORMAT_STEREO;
+        format = PS2_AUDIO_FORMAT_STEREO;
     }
-    this->hidden->channel = sceAudioChReserve(PSP_AUDIO_NEXT_CHANNEL, this->spec.samples, format);
+    this->hidden->channel = sceAudioChReserve(PS2_AUDIO_NEXT_CHANNEL, this->spec.samples, format);
     if (this->hidden->channel < 0) {
         free(this->hidden->rawbuf);
         this->hidden->rawbuf = NULL;
@@ -99,30 +99,30 @@ PSPAUDIO_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
     return 0;
 }
 
-static void PSPAUDIO_PlayDevice(_THIS)
+static void PS2AUDIO_PlayDevice(_THIS)
 {
     Uint8 *mixbuf = this->hidden->mixbufs[this->hidden->next_buffer];
 
     if (this->spec.channels == 1) {
-        sceAudioOutputBlocking(this->hidden->channel, PSP_AUDIO_VOLUME_MAX, mixbuf);
+        sceAudioOutputBlocking(this->hidden->channel, PS2_AUDIO_VOLUME_MAX, mixbuf);
     } else {
-        sceAudioOutputPannedBlocking(this->hidden->channel, PSP_AUDIO_VOLUME_MAX, PSP_AUDIO_VOLUME_MAX, mixbuf);
+        sceAudioOutputPannedBlocking(this->hidden->channel, PS2_AUDIO_VOLUME_MAX, PS2_AUDIO_VOLUME_MAX, mixbuf);
     }
 
     this->hidden->next_buffer = (this->hidden->next_buffer + 1) % NUM_BUFFERS;
 }
 
 /* This function waits until it is possible to write a full sound buffer */
-static void PSPAUDIO_WaitDevice(_THIS)
+static void PS2AUDIO_WaitDevice(_THIS)
 {
     /* Because we block when sending audio, there's no need for this function to do anything. */
 }
-static Uint8 *PSPAUDIO_GetDeviceBuf(_THIS)
+static Uint8 *PS2AUDIO_GetDeviceBuf(_THIS)
 {
     return this->hidden->mixbufs[this->hidden->next_buffer];
 }
 
-static void PSPAUDIO_CloseDevice(_THIS)
+static void PS2AUDIO_CloseDevice(_THIS)
 {
     if (this->hidden->channel >= 0) {
         sceAudioChRelease(this->hidden->channel);
@@ -131,7 +131,7 @@ static void PSPAUDIO_CloseDevice(_THIS)
     SDL_free(this->hidden);
 }
 
-static void PSPAUDIO_ThreadInit(_THIS)
+static void PS2AUDIO_ThreadInit(_THIS)
 {
     /* Increase the priority of this audio thread by 1 to put it
        ahead of other SDL threads. */
@@ -146,17 +146,17 @@ static void PSPAUDIO_ThreadInit(_THIS)
 
 
 static int
-PSPAUDIO_Init(SDL_AudioDriverImpl * impl)
+PS2AUDIO_Init(SDL_AudioDriverImpl * impl)
 {
     /* Set the function pointers */
-    impl->OpenDevice = PSPAUDIO_OpenDevice;
-    impl->PlayDevice = PSPAUDIO_PlayDevice;
-    impl->WaitDevice = PSPAUDIO_WaitDevice;
-    impl->GetDeviceBuf = PSPAUDIO_GetDeviceBuf;
-    impl->CloseDevice = PSPAUDIO_CloseDevice;
-    impl->ThreadInit = PSPAUDIO_ThreadInit;
+    impl->OpenDevice = PS2AUDIO_OpenDevice;
+    impl->PlayDevice = PS2AUDIO_PlayDevice;
+    impl->WaitDevice = PS2AUDIO_WaitDevice;
+    impl->GetDeviceBuf = PS2AUDIO_GetDeviceBuf;
+    impl->CloseDevice = PS2AUDIO_CloseDevice;
+    impl->ThreadInit = PS2AUDIO_ThreadInit;
 
-    /* PSP audio device */
+    /* PS2 audio device */
     impl->OnlyHasDefaultOutputDevice = 1;
 /*
     impl->HasCaptureSupport = 1;
@@ -170,12 +170,12 @@ PSPAUDIO_Init(SDL_AudioDriverImpl * impl)
     return 1;   /* this audio target is available. */
 }
 
-AudioBootStrap PSPAUDIO_bootstrap = {
-    "psp", "PSP audio driver", PSPAUDIO_Init, 0
+AudioBootStrap PS2AUDIO_bootstrap = {
+    "ps2", "PS2 audio driver", PS2AUDIO_Init, 0
 };
 
  /* SDL_AUDI */
 
-#endif /* SDL_AUDIO_DRIVER_PSP */
+#endif /* SDL_AUDIO_DRIVER_PS2 */
 
 /* vi: set ts=4 sw=4 expandtab: */

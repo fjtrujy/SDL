@@ -20,11 +20,11 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_JOYSTICK_PSP
+#if SDL_JOYSTICK_PS2
 
-/* This is the PSP implementation of the SDL joystick API */
-#include <pspctrl.h>
-#include <pspkernel.h>
+/* This is the PS2 implementation of the SDL joystick API */
+#include <ps2ctrl.h>
+#include <ps2kernel.h>
 
 #include <stdio.h>      /* For the definition of NULL */
 #include <stdlib.h>
@@ -44,10 +44,10 @@ static SDL_sem *pad_sem = NULL;
 static SDL_Thread *thread = NULL;
 static int running = 0;
 static const enum PspCtrlButtons button_map[] = {
-    PSP_CTRL_TRIANGLE, PSP_CTRL_CIRCLE, PSP_CTRL_CROSS, PSP_CTRL_SQUARE,
-    PSP_CTRL_LTRIGGER, PSP_CTRL_RTRIGGER,
-    PSP_CTRL_DOWN, PSP_CTRL_LEFT, PSP_CTRL_UP, PSP_CTRL_RIGHT,
-    PSP_CTRL_SELECT, PSP_CTRL_START, PSP_CTRL_HOME, PSP_CTRL_HOLD };
+    PS2_CTRL_TRIANGLE, PS2_CTRL_CIRCLE, PS2_CTRL_CROSS, PS2_CTRL_SQUARE,
+    PS2_CTRL_LTRIGGER, PS2_CTRL_RTRIGGER,
+    PS2_CTRL_DOWN, PS2_CTRL_LEFT, PS2_CTRL_UP, PS2_CTRL_RIGHT,
+    PS2_CTRL_SELECT, PS2_CTRL_START, PS2_CTRL_HOME, PS2_CTRL_HOLD };
 static int analog_map[256];  /* Map analog inputs to -32768 -> 32767 */
 
 typedef struct
@@ -109,7 +109,7 @@ int SDL_SYS_JoystickInit(void)
 
     /* Setup input */
     sceCtrlSetSamplingCycle(0);
-    sceCtrlSetSamplingMode(PSP_CTRL_MODE_ANALOG);
+    sceCtrlSetSamplingMode(PS2_CTRL_MODE_ANALOG);
 
     /* Start thread to read data */
     if((pad_sem =  SDL_CreateSemaphore(1)) == NULL) {
@@ -144,7 +144,7 @@ void SDL_SYS_JoystickDetect(void)
 /* Function to get the device-dependent name of a joystick */
 const char * SDL_SYS_JoystickNameForDeviceIndex(int device_index)
 {
-    return "PSP builtin joypad";
+    return "PS2 builtin joypad";
 }
 
 /* Function to perform the mapping from device index to the instance id for this index */
@@ -157,7 +157,7 @@ SDL_JoystickID SDL_SYS_GetInstanceIdOfDeviceIndex(int device_index)
 const char *SDL_SYS_JoystickName(int index)
 {
     if (index == 0)
-        return "PSP controller";
+        return "PS2 controller";
 
     SDL_SetError("No joystick available with that index");
     return(NULL);
@@ -258,7 +258,7 @@ SDL_JoystickGUID SDL_SYS_JoystickGetGUID(SDL_Joystick * joystick)
     return guid;
 }
 
-#endif /* SDL_JOYSTICK_PSP */
+#endif /* SDL_JOYSTICK_PS2 */
 
 /* vim: ts=4 sw=4
  */

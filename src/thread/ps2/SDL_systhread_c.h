@@ -19,6 +19,6 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include <pspkerneltypes.h>
+#include <ps2kerneltypes.h>
 
 typedef SceUID SYS_ThreadHandle;
