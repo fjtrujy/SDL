@@ -28,7 +28,7 @@
 #include "SDL_events_c.h"
 #include "SDL_gesture_c.h"
 
-/*
+//#include <memory.h>
 #include <stdio.h>
 */
 
