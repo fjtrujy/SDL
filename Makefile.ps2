@@ -81,7 +81,7 @@ OBJS= src/SDL.o \
       src/video/ps2/SDL_ps2gl.o \
       src/video/ps2/SDL_ps2mouse.o
 
-INCDIR = ./include
+INCDIR = -I./include
 CFLAGS = -g -O2 -G0 -Wall -D__PS2__
 CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti
 ASFLAGS = $(CFLAGS)
