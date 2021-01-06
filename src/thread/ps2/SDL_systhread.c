@@ -26,16 +26,16 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <Kernel.h>
 
 #include "SDL_error.h"
 #include "SDL_thread.h"
 #include "../SDL_systhread.h"
 #include "../SDL_thread_c.h"
-#include <ps2kerneltypes.h>
-#include <ps2threadman.h>
 
+extern void *_gp;
 
-static int ThreadEntry(SceSize args, void *argp)
+static void ThreadEntry(void *argp)
 {
     SDL_RunThread(*(SDL_Thread **) argp);
     return 0;
@@ -43,23 +43,34 @@ static int ThreadEntry(SceSize args, void *argp)
 
 int SDL_SYS_CreateThread(SDL_Thread *thread)
 {
-    SceKernelThreadInfo status;
+    ee_thread_status_t status;
+    ee_thread_t threadData;
+    int size;
     int priority = 32;
 
     /* Set priority of new thread to the same as the current thread */
-    status.size = sizeof(SceKernelThreadInfo);
-    if (sceKernelReferThreadStatus(sceKernelGetThreadId(), &status) == 0) {
-        priority = status.currentPriority;
+    if (ReferThreadStatus(GetThreadId(), &status) == 0) {
+        priority = status.current_priority;
     }
 
-    thread->handle = sceKernelCreateThread(thread->name, ThreadEntry,
-                           priority, thread->stacksize ? ((int) thread->stacksize) : 0x8000,
-                           PS2_THREAD_ATTR_VFPU, NULL);
+    size = thread->stacksize ? ((int) thread->stacksize) : 0x8000;
+    u8 ThreadStack[size] __attribute__ ((aligned(16)));
+
+    threadData.initial_priority	= priority;
+    threadData.current_priority	= priority;
+	threadData.stack_size		= size;
+	threadData.gp_reg			= &_gp;
+	threadData.func				= (void *)ThreadEntry;
+	threadData.stack			= (void *)ThreadStack;
+	threadData.option			= 0;
+	threadData.attr				= 0;
+	
+    thread->handle = CreateThread(&threadData);
     if (thread->handle < 0) {
-        return SDL_SetError("sceKernelCreateThread() failed");
+        return SDL_SetError("CreateThread() failed");
     }
 
-    sceKernelStartThread(thread->handle, 4, &thread);
+    StartThread(thread->handle, &thread);
     return 0;
 }
 
@@ -70,24 +81,24 @@ void SDL_SYS_SetupThread(const char *name)
 
 SDL_threadID SDL_ThreadID(void)
 {
-    return (SDL_threadID) sceKernelGetThreadId();
+    return (SDL_threadID) GetThreadId();
 }
 
 void SDL_SYS_WaitThread(SDL_Thread *thread)
 {
-    sceKernelWaitThreadEnd(thread->handle, NULL);
-    sceKernelDeleteThread(thread->handle);
+    ReleaseWaitThread(thread->handle);
+    DeleteThread(thread->handle);
 }
 
 void SDL_SYS_DetachThread(SDL_Thread *thread)
 {
     /* !!! FIXME: is this correct? */
-    sceKernelDeleteThread(thread->handle);
+    DeleteThread(thread->handle);
 }
 
 void SDL_SYS_KillThread(SDL_Thread *thread)
 {
-    sceKernelTerminateDeleteThread(thread->handle);
+    TerminateThread(thread->handle);
 }
 
 int SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
@@ -104,7 +115,7 @@ int SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
         value = 0;
     }
 
-    return sceKernelChangeThreadPriority(sceKernelGetThreadId(),value);
+    return ChangeThreadPriority(GetThreadId(),value);
 
 }
 
