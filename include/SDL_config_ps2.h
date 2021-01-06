@@ -19,8 +19,8 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifndef SDL_config_psp_h_
-#define SDL_config_psp_h_
+#ifndef SDL_config_ps2_h_
+#define SDL_config_ps2_h_
 #define SDL_config_h_
 
 #include "SDL_platform.h"
@@ -125,41 +125,39 @@
 /* #define HAVE_SIGACTION    1 */
 
 
-/* PSP isn't that sophisticated */
+/* PS2 isn't that sophisticated */
 #define LACKS_SYS_MMAN_H 1
 
-/* Enable the PSP thread support (src/thread/psp/\*.c) */
-#define SDL_THREAD_PSP  1
+/* Enable the PS2 thread support (src/thread/ps2/\*.c) */
+#define SDL_THREAD_PS2  1
 
-/* Enable the PSP timer support (src/timer/psp/\*.c) */
-#define SDL_TIMERS_PSP  1
+/* Enable the PS2 timer support (src/timer/ps2/\*.c) */
+#define SDL_TIMERS_PS2  1
 
-/* Enable the PSP joystick driver (src/joystick/psp/\*.c) */
-#define SDL_JOYSTICK_PSP        1
+/* Enable the PS2 joystick driver (src/joystick/ps2/\*.c) */
+#define SDL_JOYSTICK_PS2        1
 #define SDL_JOYSTICK_VIRTUAL    1
 
 /* Enable the dummy sensor driver */
 #define SDL_SENSOR_DUMMY  1
 
-/* Enable the PSP audio driver (src/audio/psp/\*.c) */
-#define SDL_AUDIO_DRIVER_PSP    1
+/* Enable the PS2 audio driver (src/audio/ps2/\*.c) */
+#define SDL_AUDIO_DRIVER_PS2    1
 
-/* PSP video driver */
-#define SDL_VIDEO_DRIVER_PSP   1
+/* PS2 video driver */
+#define SDL_VIDEO_DRIVER_PS2   1
 
-/* PSP render driver */
-#define SDL_VIDEO_RENDER_PSP   1
+/* PS2 render driver */
+#define SDL_VIDEO_RENDER_PS2   1
 
-#define SDL_POWER_PSP          1
-
-/* !!! FIXME: what does PSP do for filesystem stuff? */
+/* !!! FIXME: what does PS2 do for filesystem stuff? */
 #define SDL_FILESYSTEM_DUMMY   1
 
-/* PSP doesn't have haptic device (src/haptic/dummy/\*.c) */
+/* PS2 doesn't have haptic device (src/haptic/dummy/\*.c) */
 #define SDL_HAPTIC_DISABLED    1
 
-/* PSP can't load shared object (src/loadso/dummy/\*.c) */
+/* PS2 can't load shared object (src/loadso/dummy/\*.c) */
 #define SDL_LOADSO_DISABLED    1
 
 
-#endif /* SDL_config_psp_h_ */
+#endif /* SDL_config_ps2_h_ */

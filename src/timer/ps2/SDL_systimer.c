@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#ifdef SDL_TIMERS_PSP
+#ifdef SDL_TIMERS_PS2
 
 #include "SDL_thread.h"
 #include "SDL_timer.h"
@@ -29,7 +29,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
-#include <pspthreadman.h>
+#include <ps2threadman.h>
 
 static struct timeval start;
 static SDL_bool ticks_started = SDL_FALSE;
@@ -85,7 +85,7 @@ void SDL_Delay(Uint32 ms)
     sceKernelDelayThreadCB(ms * 1000);
 }
 
-#endif /* SDL_TIMERS_PSP */
+#endif /* SDL_TIMERS_PS2 */
 
 /* vim: ts=4 sw=4
  */

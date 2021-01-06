@@ -20,9 +20,9 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_THREAD_PSP
+#if SDL_THREAD_PS2
 
-/* PSP thread management routines for SDL */
+/* PS2 thread management routines for SDL */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,8 +31,8 @@
 #include "SDL_thread.h"
 #include "../SDL_systhread.h"
 #include "../SDL_thread_c.h"
-#include <pspkerneltypes.h>
-#include <pspthreadman.h>
+#include <ps2kerneltypes.h>
+#include <ps2threadman.h>
 
 
 static int ThreadEntry(SceSize args, void *argp)
@@ -54,7 +54,7 @@ int SDL_SYS_CreateThread(SDL_Thread *thread)
 
     thread->handle = sceKernelCreateThread(thread->name, ThreadEntry,
                            priority, thread->stacksize ? ((int) thread->stacksize) : 0x8000,
-                           PSP_THREAD_ATTR_VFPU, NULL);
+                           PS2_THREAD_ATTR_VFPU, NULL);
     if (thread->handle < 0) {
         return SDL_SetError("sceKernelCreateThread() failed");
     }
@@ -108,7 +108,7 @@ int SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
 
 }
 
-#endif /* SDL_THREAD_PSP */
+#endif /* SDL_THREAD_PS2 */
 
 /* vim: ts=4 sw=4
  */
