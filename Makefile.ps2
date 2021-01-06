@@ -76,8 +76,8 @@ OBJS= src/SDL.o \
       src/video/SDL_surface.o \
       src/video/SDL_video.o \
       src/thread/ps2/SDL_syscond.o \
+      src/thread/ps2/SDL_syssem.o \
       src/timer/ps2/SDL_systimer.o 
-      # src/thread/ps2/SDL_syssem.o \
       # src/audio/ps2/SDL_ps2audio.o \
       # src/joystick/ps2/SDL_sysjoystick.o \
       # src/render/ps2/SDL_render_ps2.o \
