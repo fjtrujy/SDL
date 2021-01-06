@@ -29,7 +29,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
-#include <ps2threadman.h>
 
 static struct timeval start;
 static SDL_bool ticks_started = SDL_FALSE;
@@ -79,10 +78,10 @@ SDL_GetPerformanceFrequency(void)
 
 void SDL_Delay(Uint32 ms)
 {
-    const Uint32 max_delay = 0xffffffffUL / 1000;
-    if(ms > max_delay)
-        ms = max_delay;
-    sceKernelDelayThreadCB(ms * 1000);
+    struct timespec tv = {0};
+    tv.tv_sec          = ms / 1000;
+    tv.tv_nsec         = (ms % 1000) * 1000000;
+    nanosleep(&tv, NULL);
 }
 
 #endif /* SDL_TIMERS_PS2 */

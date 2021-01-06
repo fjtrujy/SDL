@@ -74,15 +74,15 @@ OBJS= src/SDL.o \
       src/video/SDL_rect.o \
       src/video/SDL_stretch.o \
       src/video/SDL_surface.o \
-      src/video/SDL_video.o 
+      src/video/SDL_video.o \
+      src/thread/ps2/SDL_syscond.o \
+      src/timer/ps2/SDL_systimer.o 
+      # src/thread/ps2/SDL_syssem.o \
       # src/audio/ps2/SDL_ps2audio.o \
       # src/joystick/ps2/SDL_sysjoystick.o \
       # src/render/ps2/SDL_render_ps2.o \
-      # src/thread/ps2/SDL_syssem.o \
       # src/thread/ps2/SDL_systhread.o \
       # src/thread/ps2/SDL_sysmutex.o \
-      # src/thread/ps2/SDL_syscond.o \
-      # src/timer/ps2/SDL_systimer.o \
       # src/video/ps2/SDL_ps2events.o \
       # src/video/ps2/SDL_ps2video.o \
       # src/video/ps2/SDL_ps2gl.o \
