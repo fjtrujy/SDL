@@ -1,14 +1,12 @@
 # Makefile to build the SDL library
 
-INCLUDE = -I./include
-CFLAGS  = -g -G0 -O2 -D__PS2__ $(INCLUDE)
-AR	= $(EE_AR)
-CC = $(EE_CC)
-RANLIB	= mips64r5900el-ps2-elf-ranlib
+EE_INCS = -I./include
+EE_CFLAGS  = -g -D__PS2__
 
-TARGET  = libSDL.a
+EE_LIB  = libSDL.a
 SOURCES = \
 	src/*.c \
+	src/atomic/*.c \
 	src/audio/*.c \
 	src/audio/dummy/*.c \
 	src/cpuinfo/*.c \
@@ -31,18 +29,18 @@ SOURCES = \
 	src/timer/*.c \
 	src/timer/dummy/*.c \
 	src/video/*.c \
+	src/video/yuv2rgb/*.c \
 	src/video/dummy/*.c \
 
 OBJECTS = $(shell echo $(SOURCES) | sed -e 's,\.c,\.o,g')
 
-all: $(TARGET)
+EE_OBJS = $(OBJECTS)
 
-$(TARGET): $(OBJECTS)
-	$(AR) crv $@ $^
-	$(RANLIB) $@
+all: $(EE_LIB)
 
 clean:
 	rm -f $(TARGET) $(OBJECTS)
 
 #Include preferences
 include $(PS2SDK)/samples/Makefile.pref
+include $(PS2SDK)/samples/Makefile.eeglobal

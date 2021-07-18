@@ -536,6 +536,8 @@ SDL_GetPlatform()
     return "tvOS";
 #elif __IPHONEOS__
     return "iOS";
+#elif __PS2__
+    return "PlayStation 2";
 #elif __PSP__
     return "PlayStation Portable";
 #elif __VITA__
