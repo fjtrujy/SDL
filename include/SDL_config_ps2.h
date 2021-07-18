@@ -34,26 +34,14 @@
 #define HAVE_STDARG_H   1
 #define HAVE_STDDEF_H   1
 
-/* Most everything except Visual Studio 2008 and earlier has stdint.h now */
-#if defined(_MSC_VER) && (_MSC_VER < 1600)
-/* Here are some reasonable defaults */
-typedef unsigned int size_t;
-typedef signed char int8_t;
-typedef unsigned char uint8_t;
-typedef signed short int16_t;
-typedef unsigned short uint16_t;
-typedef signed int int32_t;
-typedef unsigned int uint32_t;
-typedef signed long long int64_t;
-typedef unsigned long long uint64_t;
-typedef unsigned long uintptr_t;
-#else
+
 #define HAVE_STDINT_H 1
-#endif /* Visual Studio 2008 */
 
 #ifdef __GNUC__
 #define HAVE_GCC_SYNC_LOCK_TEST_AND_SET 1
 #endif
+
+#define SDL_ATOMIC_DISABLED 1
 
 #define STDC_HEADERS    1
 #define HAVE_ALLOCA_H       1
@@ -146,8 +134,8 @@ typedef unsigned long uintptr_t;
 /* #define HAVE_SYSCONF  1 */
 /* #define HAVE_SIGACTION    1 */
 
-/* Enable the dummy audio driver (src/audio/dummy/\*.c) */
-#define SDL_AUDIO_DRIVER_DUMMY  1
+/* Enable the PS2 audio driver (src/audio/ps2/\*.c) */
+#define SDL_AUDIO_DRIVER_PS2  1
 
 /* Enable the stub joystick driver (src/joystick/dummy/\*.c) */
 #define SDL_JOYSTICK_DISABLED   1
@@ -175,5 +163,8 @@ typedef unsigned long uintptr_t;
 
 
 #define LACKS_SYS_MMAN_H 1
+
+/* PSP can't load shared object (src/loadso/dummy/\*.c) */
+#define SDL_LOADSO_DISABLED    1
 
 #endif /* SDL_config_ps2_h_ */
