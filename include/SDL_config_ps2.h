@@ -161,10 +161,12 @@
 /* Enable the dummy filesystem driver (src/filesystem/dummy/\*.c) */
 #define SDL_FILESYSTEM_DUMMY  1
 
+/* PS2 can't load shared object (src/loadso/dummy/\*.c) */
+#define SDL_LOADSO_DISABLED    1
 
 #define LACKS_SYS_MMAN_H 1
 
-/* PSP can't load shared object (src/loadso/dummy/\*.c) */
-#define SDL_LOADSO_DISABLED    1
+/* Enable the PS2 thread support (src/thread/ps2/\*.c) */
+#define SDL_THREAD_PS2  1
 
 #endif /* SDL_config_ps2_h_ */

@@ -25,7 +25,7 @@ SOURCES = \
 	src/sensor/dummy/*.c \
 	src/stdlib/*.c \
 	src/thread/*.c \
-	src/thread/generic/*.c \
+	src/thread/ps2/*.c \
 	src/timer/*.c \
 	src/timer/dummy/*.c \
 	src/video/*.c \
