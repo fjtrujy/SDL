@@ -34,6 +34,7 @@
 #include "SDL_keyboard.h"
 #include "../../thread/SDL_systhread.h"
 #include <psphprm.h>
+#include <pspthreadman.h>
 
 #ifdef PSPIRKEYB
 #include <pspirkeyb.h>
@@ -79,7 +80,7 @@ void PSP_PumpEvents(_THIS)
     enum PspHprmKeys keys;
     enum PspHprmKeys changed;
     static enum PspHprmKeys old_keys = 0;
-    SDL_Keysym sym;
+    //SDL_Keysym sym;
 
     SDL_SemWait(event_sem);
     keys = hprm;
@@ -91,14 +92,14 @@ void PSP_PumpEvents(_THIS)
     if(changed) {
         for(i=0; i<sizeof(keymap_psp)/sizeof(keymap_psp[0]); i++) {
             if(changed & keymap_psp[i].id) {
+                /* out of date
                 sym.scancode = keymap_psp[i].id;
                 sym.sym = keymap_psp[i].sym;
 
-                /* out of date
                 SDL_PrivateKeyboard((keys & keymap_psp[i].id) ?
                             SDL_PRESSED : SDL_RELEASED,
                             &sym);
-        */
+                */
                 SDL_SendKeyboardKey((keys & keymap_psp[i].id) ?
                                     SDL_PRESSED : SDL_RELEASED, SDL_GetScancodeFromKey(keymap_psp[i].sym));
             }
@@ -119,10 +120,11 @@ void PSP_PumpEvents(_THIS)
                         scanData=(SIrKeybScanCodeData*) buffer+i;
                         raw = scanData->raw;
                         pressed = scanData->pressed;
+
+                /* not tested
                 sym.scancode = raw;
                 sym.sym = keymap[raw];
-                /* not tested */
-                /* SDL_PrivateKeyboard(pressed?SDL_PRESSED:SDL_RELEASED, &sym); */
+                SDL_PrivateKeyboard(pressed?SDL_PRESSED:SDL_RELEASED, &sym); */
                 SDL_SendKeyboardKey((keys & keymap_psp[i].id) ?
                                     SDL_PRESSED : SDL_RELEASED, SDL_GetScancodeFromKey(keymap[raw]));
 
