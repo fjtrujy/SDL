@@ -113,9 +113,7 @@ PSP_Create()
     device->MinimizeWindow = PSP_MinimizeWindow;
     device->RestoreWindow = PSP_RestoreWindow;
     device->DestroyWindow = PSP_DestroyWindow;
-#if 0
     device->GetWindowWMInfo = PSP_GetWindowWMInfo;
-#endif
     device->GL_LoadLibrary = PSP_GL_LoadLibrary;
     device->GL_GetProcAddress = PSP_GL_GetProcAddress;
     device->GL_UnloadLibrary = PSP_GL_UnloadLibrary;
@@ -166,8 +164,15 @@ PSP_VideoInit(_THIS)
     display.current_mode = current_mode;
     display.driverdata = NULL;
 
-    SDL_AddVideoDisplay(&display, SDL_FALSE);
+    SDL_AddDisplayMode(&display, &current_mode);
 
+    /* 16 bpp secondary mode */
+    current_mode.format = SDL_PIXELFORMAT_BGR565;
+    display.desktop_mode = current_mode;
+    display.current_mode = current_mode;
+    SDL_AddDisplayMode(&display, &current_mode);
+
+    SDL_AddVideoDisplay(&display, SDL_FALSE);
     return 1;
 }
 
@@ -214,6 +219,7 @@ PSP_CreateWindow(_THIS, SDL_Window * window)
     /* Setup driver data for this window */
     window->driverdata = wdata;
 
+    SDL_SetKeyboardFocus(window);
 
     /* Window has been successfully created */
     return 0;
@@ -273,22 +279,22 @@ PSP_DestroyWindow(_THIS, SDL_Window * window)
 /*****************************************************************************/
 /* SDL Window Manager function                                               */
 /*****************************************************************************/
-#if 0
 SDL_bool
 PSP_GetWindowWMInfo(_THIS, SDL_Window * window, struct SDL_SysWMinfo *info)
 {
-    if (info->version.major <= SDL_MAJOR_VERSION) {
+
+    SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
+
+    if (info->version.major == SDL_MAJOR_VERSION &&
+        info->version.minor == SDL_MINOR_VERSION) {
+        info->subsystem = SDL_SYSWM_PSP;
         return SDL_TRUE;
     } else {
         SDL_SetError("Application not compiled with SDL %d.%d",
                      SDL_MAJOR_VERSION, SDL_MINOR_VERSION);
         return SDL_FALSE;
     }
-
-    /* Failed to get window manager information */
-    return SDL_FALSE;
 }
-#endif
 
 
 /* TO Write Me */
