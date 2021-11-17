@@ -41,6 +41,21 @@
 /* The tag name used by PSP audio */
 #define PSPAUDIO_DRIVER_NAME         "psp"
 
+/**
+  * Interleave 2 channels. For transforming from mono to stereo
+  *
+  * @param in_L - mono input buffer (left channel)
+  * @param in_R - mono input buffer (right channel)
+  * @param out - stereo output buffer
+  * @param num_samples - number of samples
+  */
+static void interleave(const uint16_t * in_L, const uint16_t * in_R, uint16_t * out, const size_t num_samples) {
+    for (size_t i = 0; i < num_samples; ++i) {
+        out[i * 2] = in_L[i];
+        out[i * 2 + 1] = in_R[i];
+    }
+}
+
 static int
 PSPAUDIO_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
 {
@@ -50,19 +65,19 @@ PSPAUDIO_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
     if (this->hidden == NULL) {
         return SDL_OutOfMemory();
     }
-    SDL_zerop(this->hidden);
+    SDL_memset(this->hidden, 0, sizeof(*this->hidden));
     switch (this->spec.format & 0xff) {
         case 8:
         case 16:
             this->spec.format = AUDIO_S16LSB;
             break;
         default:
+            this->hidden->channel = -1;
             return SDL_SetError("Unsupported audio format");
     }
 
     /* The sample count must be a multiple of 64. */
     this->spec.samples = PSP_AUDIO_SAMPLE_ALIGN(this->spec.samples);
-    this->spec.freq = 44100;
 
     /* Update the fragment size as size in bytes. */
     SDL_CalculateAudioSpec(&this->spec);
@@ -80,10 +95,18 @@ PSPAUDIO_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
     if (this->spec.channels == 1) {
         format = PSP_AUDIO_FORMAT_MONO;
     } else {
-        this->spec.channels = 2;
         format = PSP_AUDIO_FORMAT_STEREO;
     }
-    this->hidden->channel = sceAudioChReserve(PSP_AUDIO_NEXT_CHANNEL, this->spec.samples, format);
+
+    /*  PSP has some limitations with the Audio. It fully supports 44.1KHz (Mono & Stereo),
+        however with frequencies differents than 44.1KHz, it just supports Stereo,
+        so a resampler must be done for these scenarios */
+    if (this->spec.freq == 44100) {
+        this->hidden->channel = sceAudioChReserve(PSP_AUDIO_NEXT_CHANNEL, this->spec.samples, format);
+    } else {
+        this->hidden->channel = sceAudioSRCChReserve(this->spec.samples, this->spec.freq, 2);
+    }
+    
     if (this->hidden->channel < 0) {
         free(this->hidden->rawbuf);
         this->hidden->rawbuf = NULL;
@@ -101,11 +124,20 @@ PSPAUDIO_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
 
 static void PSPAUDIO_PlayDevice(_THIS)
 {
-    Uint8 *mixbuf = this->hidden->mixbufs[this->hidden->next_buffer];
-
-    if (this->spec.channels == 1) {
-        sceAudioOutputBlocking(this->hidden->channel, PSP_AUDIO_VOLUME_MAX, mixbuf);
+    if (this->spec.freq != 44100){
+        if (this->spec.channels == 1) {
+            /* We must do the resampler from Mono to Stereo */
+            Uint8 *singleChannel = this->hidden->mixbufs[this->hidden->next_buffer];
+            Uint8 *mixbuf = SDL_malloc(4*this->spec.samples);
+            interleave((const uint16_t *)singleChannel, (const uint16_t *)singleChannel, mixbuf, this->spec.samples);
+            sceAudioSRCOutputBlocking(PSP_AUDIO_VOLUME_MAX, mixbuf);
+            SDL_free(mixbuf);
+        } else {
+            Uint8 *mixbuf = this->hidden->mixbufs[this->hidden->next_buffer];
+            sceAudioSRCOutputBlocking(PSP_AUDIO_VOLUME_MAX, mixbuf);
+        }
     } else {
+        Uint8 *mixbuf = this->hidden->mixbufs[this->hidden->next_buffer];
         sceAudioOutputPannedBlocking(this->hidden->channel, PSP_AUDIO_VOLUME_MAX, PSP_AUDIO_VOLUME_MAX, mixbuf);
     }
 
@@ -125,10 +157,18 @@ static Uint8 *PSPAUDIO_GetDeviceBuf(_THIS)
 static void PSPAUDIO_CloseDevice(_THIS)
 {
     if (this->hidden->channel >= 0) {
-        sceAudioChRelease(this->hidden->channel);
+        if (this->spec.freq != 44100){
+            sceAudioSRCChRelease();
+        } else {
+            sceAudioChRelease(this->hidden->channel);
+        }
+        this->hidden->channel = -1;
     }
-    free(this->hidden->rawbuf);  /* this uses memalign(), not SDL_malloc(). */
-    SDL_free(this->hidden);
+
+    if (this->hidden->rawbuf != NULL) {
+        free(this->hidden->rawbuf);
+        this->hidden->rawbuf = NULL;
+    }
 }
 
 static void PSPAUDIO_ThreadInit(_THIS)
