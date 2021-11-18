@@ -45,6 +45,8 @@ OBJS= src/SDL.o \
       src/render/software/SDL_rotate.o \
       src/sensor/SDL_sensor.o \
       src/sensor/dummy/SDL_dummysensor.o \
+      src/misc/SDL_url.o \
+      src/misc/dummy/SDL_sysurl.o \
       src/stdlib/SDL_getenv.o \
       src/stdlib/SDL_iconv.o \
       src/stdlib/SDL_malloc.o \
@@ -95,8 +97,8 @@ ASFLAGS = $(CFLAGS)
 
 LIBDIR  =
 LIBS = -lGL -lGLU -lglut -lz \
-         -lpspvfpu -lpsphprm -lpspsdk -lpspctrl -lpspumd -lpsprtc -lpsppower -lpspgum -lpspgu -lpspaudiolib -lpspaudio -lpsphttp -lpspssl -lpspwlan \
-         -lpspnet_adhocmatching -lpspnet_adhoc -lpspnet_adhocctl -lm -lpspvram
+         -lpspvfpu -lpsphprm -lpspsdk -lpspctrl -lpspumd -lpsppower -lpspgum -lpspgu -lpspaudiolib -lpspaudio -lpsphttp -lpspssl -lpspwlan \
+         -lpspnet_adhocmatching -lpspnet_adhoc -lpspnet_adhocctl -lpspvram
 
 PSPSDK=$(shell psp-config --pspsdk-path)
 include $(PSPSDK)/lib/build.mak
