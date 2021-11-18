@@ -33,9 +33,8 @@
 char *
 SDL_GetBasePath(void)
 {
-  int len = 10;
-  char *retval = malloc(len);
-  SDL_snprintf(retval, len, "ms0:/PSP/");
+  const char *basepath = "ms0:/PSP/";
+  char *retval = SDL_strdup(basepath);
   return retval;
 }
 
@@ -59,7 +58,7 @@ SDL_GetPrefPath(const char *org, const char *app)
   }
   free(base);
 
-  mkdir(retval, 0700);
+  mkdir(retval, 0755);
   return retval;
 }
 
