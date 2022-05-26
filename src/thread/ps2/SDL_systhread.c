@@ -33,10 +33,6 @@
 #include "../SDL_thread_c.h"
 #include <kernel.h>
 
-static void ThreadEntry(void *arg) {
-    SDL_RunThread(*(SDL_Thread **) arg);
-}
-
 static void FinishThread(SDL_Thread *thread) {
     ee_thread_status_t info;
     int res;
@@ -68,7 +64,7 @@ int SDL_SYS_CreateThread(SDL_Thread *thread)
     /* Create EE Thread */
 	eethread.attr = 0;
 	eethread.option = 0;
-	eethread.func = &ThreadEntry;
+	eethread.func = thread->userfunc;
 	eethread.stack = SDL_malloc(stack_size);
 	eethread.stack_size = stack_size;
 	eethread.gp_reg = &_gp;
@@ -79,9 +75,7 @@ int SDL_SYS_CreateThread(SDL_Thread *thread)
         return SDL_SetError("CreateThread() failed");
     }
 
-    StartThread(thread->handle, NULL);
-    // sceKernelStartThread(thread->handle, 4, &thread);
-    return 0;
+    return StartThread(thread->handle, thread->userdata);
 }
 
 void SDL_SYS_SetupThread(const char *name)
