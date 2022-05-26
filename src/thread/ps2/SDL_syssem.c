@@ -106,7 +106,7 @@ int SDL_SemWaitTimeout(SDL_sem *sem, Uint32 timeout)
     // }
 
     res = WaitSema(sem->semid);
-    if (res == 0) {
+    if (res > 0) {
         return 0;
     } else {
         return SDL_SetError("WaitSema() failed");
