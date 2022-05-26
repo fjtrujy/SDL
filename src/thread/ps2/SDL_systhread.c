@@ -37,7 +37,8 @@ static void FinishThread(SDL_Thread *thread) {
     ee_thread_status_t info;
     int res;
 
-    res = ReferThreadStatus(GetThreadId(), &info);
+    res = ReferThreadStatus(thread->handle, &info);
+    TerminateThread(thread->handle);
     DeleteThread(thread->handle);
 
     if (res == 0) {
@@ -90,8 +91,7 @@ SDL_threadID SDL_ThreadID(void)
 
 void SDL_SYS_WaitThread(SDL_Thread *thread)
 {
-    TerminateThread(thread->handle);
-    FinishThread(thread);
+   ReleaseWaitThread(thread->handle);
 }
 
 void SDL_SYS_DetachThread(SDL_Thread *thread)
