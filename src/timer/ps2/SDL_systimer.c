@@ -29,8 +29,9 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
+#include <ps2sdkapi.h>
 
-static struct timeval start;
+static ps2_clock_t start;
 static SDL_bool ticks_started = SDL_FALSE;
 
 void
@@ -41,7 +42,7 @@ SDL_TicksInit(void)
     }
     ticks_started = SDL_TRUE;
 
-    gettimeofday(&start, NULL);
+    start = ps2_clock();
 }
 
 void
@@ -53,14 +54,14 @@ SDL_TicksQuit(void)
 Uint64
 SDL_GetTicks64(void)
 {
-    struct timeval now;
+    ps2_clock_t now;
 
     if (!ticks_started) {
         SDL_TicksInit();
     }
 
-    gettimeofday(&now, NULL);
-    return (Uint64)(((Sint64)(now.tv_sec - start.tv_sec) * 1000) + ((now.tv_usec - start.tv_usec) / 1000));
+    now = ps2_clock();
+    return (Uint64)((now - start) / (PS2_CLOCKS_PER_SEC / CLOCKS_PER_SEC));
 }
 
 Uint64
