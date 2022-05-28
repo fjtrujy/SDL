@@ -46,10 +46,20 @@ static void FinishThread(SDL_Thread *thread) {
     }
 }
 
+static int childThread(void *arg)
+{
+    SDL_Thread *thread = (SDL_Thread *)arg;
+    int res = thread->userfunc(thread->userdata);
+    SignalSema((int)thread->endfunc);
+    DeleteSema((int)thread->endfunc);
+    return res;
+}
+
 int SDL_SYS_CreateThread(SDL_Thread *thread)
 {
     ee_thread_status_t status;
     ee_thread_t eethread;
+    ee_sema_t sema;
     size_t stack_size;
     int priority = 32;
 
@@ -65,7 +75,7 @@ int SDL_SYS_CreateThread(SDL_Thread *thread)
     /* Create EE Thread */
 	eethread.attr = 0;
 	eethread.option = 0;
-	eethread.func = thread->userfunc;
+	eethread.func = &childThread;
 	eethread.stack = SDL_malloc(stack_size);
 	eethread.stack_size = stack_size;
 	eethread.gp_reg = &_gp;
@@ -76,7 +86,13 @@ int SDL_SYS_CreateThread(SDL_Thread *thread)
         return SDL_SetError("CreateThread() failed");
     }
 
-    return StartThread(thread->handle, thread->userdata);
+    // Prepare el semaphore for the ending function
+    sema.init_count = 0;
+	sema.max_count = 1;
+	sema.option = 0;
+    thread->endfunc = (void *)CreateSema(&sema);
+
+    return StartThread(thread->handle, thread);
 }
 
 void SDL_SYS_SetupThread(const char *name)
@@ -91,7 +107,9 @@ SDL_threadID SDL_ThreadID(void)
 
 void SDL_SYS_WaitThread(SDL_Thread *thread)
 {
-   ReleaseWaitThread(thread->handle);
+    WaitSema((int)thread->endfunc);
+    ReleaseWaitThread(thread->handle);
+    FinishThread(thread);
 }
 
 void SDL_SYS_DetachThread(SDL_Thread *thread)
@@ -120,7 +138,6 @@ int SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
     }
 
     return ChangeThreadPriority(GetThreadId(),value);
-
 }
 
 #endif /* SDL_THREAD_PS2 */
