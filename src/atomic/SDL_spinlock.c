@@ -169,6 +169,8 @@ SDL_AtomicTryLock(SDL_SpinLock *lock)
     /* watcom assembler rejects PAUSE if CPU < i686, and it refuses REP NOP as an invalid combination. Hardcode the bytes.  */
     extern __inline void PAUSE_INSTRUCTION(void);
     #pragma aux PAUSE_INSTRUCTION = "db 0f3h,90h"
+#elif defined(__mips__)
+    #define PAUSE_INSTRUCTION() __asm__ __volatile__("nop");
 #else
     #define PAUSE_INSTRUCTION()
 #endif
