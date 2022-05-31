@@ -40,6 +40,7 @@ static void FinishThread(SDL_Thread *thread) {
     res = ReferThreadStatus(thread->handle, &info);
     TerminateThread(thread->handle);
     DeleteThread(thread->handle);
+    DeleteSema((int)thread->endfunc);
 
     if (res == 0) {
         SDL_free(info.stack);
@@ -51,7 +52,6 @@ static int childThread(void *arg)
     SDL_Thread *thread = (SDL_Thread *)arg;
     int res = thread->userfunc(thread->userdata);
     SignalSema((int)thread->endfunc);
-    DeleteSema((int)thread->endfunc);
     return res;
 }
 
