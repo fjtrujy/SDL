@@ -42,7 +42,7 @@ static void FinishThread(SDL_Thread *thread) {
     DeleteThread(thread->handle);
     DeleteSema((int)thread->endfunc);
 
-    if (res == 0) {
+    if (res > 0) {
         SDL_free(info.stack);
     }
 }
