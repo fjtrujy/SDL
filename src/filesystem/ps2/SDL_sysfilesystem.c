@@ -41,7 +41,7 @@ SDL_GetBasePath(void)
   getcwd(cwd, sizeof(cwd));
   len = SDL_strlen(cwd) + 2;
   retval = (char *) SDL_malloc(len);
-  SDL_snprintf(retval, len, "%s/", cwd);
+  SDL_snprintf(retval, len, "%s", cwd);
 
   return retval;
 }
@@ -70,7 +70,10 @@ SDL_GetPrefPath(const char *org, const char *app)
   }
   free(base);
 
-  mkdir(retval, 0755);
+  printf("Creating folder %s\n", retval);
+  mkdir(retval, 0x0755);
+  
+  while(1) {}
   return retval;
 }
 
