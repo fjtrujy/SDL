@@ -1038,6 +1038,12 @@ SDL_GetSystemRAM(void)
             SDL_SystemRAM = 536870912;
         }
 #endif
+#ifdef __PS2__
+        if (SDL_SystemRAM <= 0) {
+            /* PlayStation 2 has 32MiB however there are some special models with 64 and 128 */
+            SDL_SystemRAM = 33554432;
+        }
+#endif
 #endif
     }
     return SDL_SystemRAM;
