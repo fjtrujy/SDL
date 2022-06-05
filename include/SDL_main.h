@@ -93,7 +93,7 @@
 #define SDL_MAIN_AVAILABLE
 
 #elif defined(PS2)
-#define SDL_MAIN_AVAILABLE
+// #define SDL_MAIN_AVAILABLE
 
 #endif
 #endif /* SDL_MAIN_HANDLED */

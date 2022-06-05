@@ -145,12 +145,12 @@ static void start_modules() {
 
 int main(int argc, char *argv[])
 {
-    reset_IOP();
+    // reset_IOP();
 
-    load_modules();
-    start_modules();
+    // load_modules();
+    // start_modules();
 
-    SDL_SetMainReady();
+    // SDL_SetMainReady();
 
     return SDL_main(argc, argv);;
 }

@@ -28,15 +28,15 @@ if(PSP)
     )
 elseif(PS2)
 link_libraries(
-        SDL2main
+        # SDL2main
         SDL2_test
         SDL2-static
-        patches
-        dmakit
-        audsrv
-        mtap 
-        padx
-        fileXio
+        # patches
+        # dmakit
+        # audsrv
+        # mtap 
+        # padx
+        # fileXio
 )
 else()
     link_libraries(SDL2_test SDL2-static)

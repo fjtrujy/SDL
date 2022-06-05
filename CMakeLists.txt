@@ -2510,7 +2510,7 @@ elseif(PSP)
 elseif(PS2)
   list(APPEND EXTRA_CFLAGS "-DPS2")
 
-  file(GLOB PS2_MAIN_SOURCES ${SDL2_SOURCE_DIR}/src/main/ps2/*.c)
+  # file(GLOB PS2_MAIN_SOURCES ${SDL2_SOURCE_DIR}/src/main/ps2/*.c)
   set(SDLMAIN_SOURCES ${SDLMAIN_SOURCES} ${PS2_MAIN_SOURCES})
   
 
