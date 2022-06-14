@@ -25,8 +25,8 @@
 #include "SDL.h"
 #include "SDL_atomic.h"
 #include "SDL_events.h"
-#include "SDL_sysjoystick.h"
 #include "SDL_hints.h"
+#include "SDL_sysjoystick.h"
 
 #if !SDL_EVENTS_DISABLED
 #include "../events/SDL_events_c.h"
@@ -41,7 +41,7 @@
 /* Needed for checking for input remapping programs */
 #include "../core/windows/SDL_windows.h"
 
-#undef UNICODE          /* We want ASCII functions */
+#undef UNICODE /* We want ASCII functions */
 #include <tlhelp32.h>
 #endif
 
@@ -83,7 +83,7 @@ static SDL_JoystickDriver *SDL_joystick_drivers[] = {
 #ifdef SDL_JOYSTICK_HAIKU
     &SDL_HAIKU_JoystickDriver,
 #endif
-#ifdef SDL_JOYSTICK_USBHID  /* !!! FIXME: "USBHID" is a generic name, and doubly-confusing with HIDAPI next to it. This is the *BSD interface, rename this. */
+#ifdef SDL_JOYSTICK_USBHID /* !!! FIXME: "USBHID" is a generic name, and doubly-confusing with HIDAPI next to it. This is the *BSD interface, rename this. */
     &SDL_BSD_JoystickDriver,
 #endif
 #ifdef SDL_JOYSTICK_OS2
@@ -98,7 +98,7 @@ static SDL_JoystickDriver *SDL_joystick_drivers[] = {
 #ifdef SDL_JOYSTICK_VITA
     &SDL_VITA_JoystickDriver,
 #endif
-#ifdef SDL_JOYSTICK_PS2DEV
+#ifdef SDL_JOYSTICK_PS2
     &SDL_PS2_JoystickDriver,
 #endif
 #if defined(SDL_JOYSTICK_DUMMY) || defined(SDL_JOYSTICK_DISABLED)
@@ -176,7 +176,7 @@ SDL_SetJoystickIDForPlayerIndex(int player_index, SDL_JoystickID instance_id)
     int existing_player_index;
 
     if (player_index >= SDL_joystick_player_count) {
-        SDL_JoystickID *new_players = (SDL_JoystickID *)SDL_realloc(SDL_joystick_players, (player_index + 1)*sizeof(*SDL_joystick_players));
+        SDL_JoystickID *new_players = (SDL_JoystickID *) SDL_realloc(SDL_joystick_players, (player_index + 1) * sizeof(*SDL_joystick_players));
         if (!new_players) {
             SDL_OutOfMemory();
             return SDL_FALSE;
@@ -273,7 +273,8 @@ SDL_NumJoysticks(void)
  * Return the next available joystick instance ID
  * This may be called by drivers from multiple threads, unprotected by any locks
  */
-SDL_JoystickID SDL_GetNextJoystickInstanceID()
+SDL_JoystickID
+SDL_GetNextJoystickInstanceID()
 {
     return SDL_AtomicIncRef(&SDL_next_joystick_instance_id);
 }
@@ -372,8 +373,8 @@ SDL_JoystickAxesCenteredAtZero(SDL_Joystick *joystick)
     return SDL_TRUE;
 #else
     static Uint32 zero_centered_joysticks[] = {
-        MAKE_VIDPID(0x0e8f, 0x3013),    /* HuiJia SNES USB adapter */
-        MAKE_VIDPID(0x05a0, 0x3232),    /* 8Bitdo Zero Gamepad */
+        MAKE_VIDPID(0x0e8f, 0x3013), /* HuiJia SNES USB adapter */
+        MAKE_VIDPID(0x05a0, 0x3232), /* 8Bitdo Zero Gamepad */
     };
 
     int i;
@@ -428,10 +429,10 @@ SDL_JoystickOpen(int device_index)
     instance_id = driver->GetDeviceInstanceID(device_index);
     while (joysticklist) {
         if (instance_id == joysticklist->instance_id) {
-                joystick = joysticklist;
-                ++joystick->ref_count;
-                SDL_UnlockJoysticks();
-                return joystick;
+            joystick = joysticklist;
+            ++joystick->ref_count;
+            SDL_UnlockJoysticks();
+            return joystick;
         }
         joysticklist = joysticklist->next;
     }
@@ -483,10 +484,7 @@ SDL_JoystickOpen(int device_index)
     if (joystick->nbuttons > 0) {
         joystick->buttons = (Uint8 *) SDL_calloc(joystick->nbuttons, sizeof(Uint8));
     }
-    if (((joystick->naxes > 0) && !joystick->axes)
-        || ((joystick->nhats > 0) && !joystick->hats)
-        || ((joystick->nballs > 0) && !joystick->balls)
-        || ((joystick->nbuttons > 0) && !joystick->buttons)) {
+    if (((joystick->naxes > 0) && !joystick->axes) || ((joystick->nhats > 0) && !joystick->hats) || ((joystick->nballs > 0) && !joystick->balls) || ((joystick->nbuttons > 0) && !joystick->buttons)) {
         SDL_OutOfMemory();
         SDL_JoystickClose(joystick);
         SDL_UnlockJoysticks();
@@ -530,10 +528,10 @@ SDL_JoystickAttachVirtual(SDL_JoystickType type,
 
     SDL_zero(desc);
     desc.version = SDL_VIRTUAL_JOYSTICK_DESC_VERSION;
-    desc.type = (Uint16)type;
-    desc.naxes = (Uint16)naxes;
-    desc.nbuttons = (Uint16)nbuttons;
-    desc.nhats = (Uint16)nhats;
+    desc.type = (Uint16) type;
+    desc.naxes = (Uint16) naxes;
+    desc.nbuttons = (Uint16) nbuttons;
+    desc.nhats = (Uint16) nhats;
     return SDL_JoystickAttachVirtualEx(&desc);
 }
 
@@ -640,7 +638,7 @@ SDL_PrivateJoystickValid(SDL_Joystick *joystick)
 }
 
 SDL_bool
-SDL_PrivateJoystickGetAutoGamepadMapping(int device_index, SDL_GamepadMapping * out)
+SDL_PrivateJoystickGetAutoGamepadMapping(int device_index, SDL_GamepadMapping *out)
 {
     SDL_JoystickDriver *driver;
     SDL_bool is_ok = SDL_FALSE;
@@ -1209,7 +1207,7 @@ SDL_JoystickQuit(void)
 
     /* Quit drivers in reverse order to avoid breaking dependencies between drivers */
     for (i = SDL_arraysize(SDL_joystick_drivers) - 1; i >= 0; --i) {
-       SDL_joystick_drivers[i]->Quit();
+        SDL_joystick_drivers[i]->Quit();
     }
 
     if (SDL_joystick_players) {
@@ -1235,7 +1233,6 @@ SDL_JoystickQuit(void)
     SDL_GameControllerQuitMappings();
 }
 
-
 static SDL_bool
 SDL_PrivateJoystickShouldIgnoreEvent()
 {
@@ -1252,13 +1249,14 @@ SDL_PrivateJoystickShouldIgnoreEvent()
 
 /* These are global for SDL_sysjoystick.c and SDL_events.c */
 
-void SDL_PrivateJoystickAddTouchpad(SDL_Joystick *joystick, int nfingers)
+void
+SDL_PrivateJoystickAddTouchpad(SDL_Joystick *joystick, int nfingers)
 {
     int ntouchpads = joystick->ntouchpads + 1;
-    SDL_JoystickTouchpadInfo *touchpads = (SDL_JoystickTouchpadInfo *)SDL_realloc(joystick->touchpads, (ntouchpads * sizeof(SDL_JoystickTouchpadInfo)));
+    SDL_JoystickTouchpadInfo *touchpads = (SDL_JoystickTouchpadInfo *) SDL_realloc(joystick->touchpads, (ntouchpads * sizeof(SDL_JoystickTouchpadInfo)));
     if (touchpads) {
         SDL_JoystickTouchpadInfo *touchpad = &touchpads[ntouchpads - 1];
-        SDL_JoystickTouchpadFingerInfo *fingers = (SDL_JoystickTouchpadFingerInfo *)SDL_calloc(nfingers, sizeof(SDL_JoystickTouchpadFingerInfo));
+        SDL_JoystickTouchpadFingerInfo *fingers = (SDL_JoystickTouchpadFingerInfo *) SDL_calloc(nfingers, sizeof(SDL_JoystickTouchpadFingerInfo));
 
         if (fingers) {
             touchpad->nfingers = nfingers;
@@ -1274,10 +1272,11 @@ void SDL_PrivateJoystickAddTouchpad(SDL_Joystick *joystick, int nfingers)
     }
 }
 
-void SDL_PrivateJoystickAddSensor(SDL_Joystick *joystick, SDL_SensorType type, float rate)
+void
+SDL_PrivateJoystickAddSensor(SDL_Joystick *joystick, SDL_SensorType type, float rate)
 {
     int nsensors = joystick->nsensors + 1;
-    SDL_JoystickSensorInfo *sensors = (SDL_JoystickSensorInfo *)SDL_realloc(joystick->sensors, (nsensors * sizeof(SDL_JoystickSensorInfo)));
+    SDL_JoystickSensorInfo *sensors = (SDL_JoystickSensorInfo *) SDL_realloc(joystick->sensors, (nsensors * sizeof(SDL_JoystickSensorInfo)));
     if (sensors) {
         SDL_JoystickSensorInfo *sensor = &sensors[nsensors - 1];
 
@@ -1290,7 +1289,8 @@ void SDL_PrivateJoystickAddSensor(SDL_Joystick *joystick, SDL_SensorType type, f
     }
 }
 
-void SDL_PrivateJoystickAdded(SDL_JoystickID device_instance)
+void
+SDL_PrivateJoystickAdded(SDL_JoystickID device_instance)
 {
     SDL_JoystickDriver *driver;
     int driver_device_index;
@@ -1331,7 +1331,8 @@ void SDL_PrivateJoystickAdded(SDL_JoystickID device_instance)
  * to have the right value for which, because the number of controllers in
  * the system is now one less.
  */
-static void UpdateEventsForDeviceRemoval(int device_index)
+static void
+UpdateEventsForDeviceRemoval(int device_index)
 {
     int i, num_events;
     SDL_Event *events;
@@ -1351,14 +1352,12 @@ static void UpdateEventsForDeviceRemoval(int device_index)
     for (i = 0; i < num_events; ++i) {
         if (events[i].cdevice.which < device_index) {
             /* No change for index values lower than the removed device */
-        }
-        else if (events[i].cdevice.which == device_index) {
+        } else if (events[i].cdevice.which == device_index) {
             /* Drop this event entirely */
             SDL_memmove(&events[i], &events[i + 1], sizeof(*events) * (num_events - (i + 1)));
             --num_events;
             --i;
-        }
-        else {
+        } else {
             /* Fix up the device index if greater than the removed device */
             --events[i].cdevice.which;
         }
@@ -1397,7 +1396,8 @@ SDL_PrivateJoystickForceRecentering(SDL_Joystick *joystick)
     }
 }
 
-void SDL_PrivateJoystickRemoved(SDL_JoystickID device_instance)
+void
+SDL_PrivateJoystickRemoved(SDL_JoystickID device_instance)
 {
     SDL_Joystick *joystick = NULL;
     int player_index;
@@ -1463,7 +1463,7 @@ SDL_PrivateJoystickAxis(SDL_Joystick *joystick, Uint8 axis, Sint16 value)
     }
     if (!info->sent_initial_value) {
         /* Make sure we don't send motion until there's real activity on this axis */
-        const int MAX_ALLOWED_JITTER = SDL_JOYSTICK_AXIS_MAX / 80;  /* ShanWan PS3 controller needed 96 */
+        const int MAX_ALLOWED_JITTER = SDL_JOYSTICK_AXIS_MAX / 80; /* ShanWan PS3 controller needed 96 */
         if (SDL_abs(value - info->value) <= MAX_ALLOWED_JITTER) {
             return 0;
         }
@@ -1662,7 +1662,7 @@ SDL_JoystickUpdate(void)
         if (joystick->attached) {
             /* This driver should always be != NULL, but seeing a crash in the wild...? */
             if (!joystick->driver) {
-                continue;  /* nothing we can do, and other things use joystick->driver below here. */
+                continue; /* nothing we can do, and other things use joystick->driver below here. */
             }
 
             joystick->driver->Update(joystick);
@@ -1747,9 +1747,10 @@ SDL_JoystickEventState(int state)
 #endif /* SDL_EVENTS_DISABLED */
 }
 
-void SDL_GetJoystickGUIDInfo(SDL_JoystickGUID guid, Uint16 *vendor, Uint16 *product, Uint16 *version)
+void
+SDL_GetJoystickGUIDInfo(SDL_JoystickGUID guid, Uint16 *vendor, Uint16 *product, Uint16 *version)
 {
-    Uint16 *guid16 = (Uint16 *)guid.data;
+    Uint16 *guid16 = (Uint16 *) guid.data;
 
     /* If the GUID fits the form of BUS 0000 VENDOR 0000 PRODUCT 0000, return the data */
     if (/* guid16[0] is device bus type */
@@ -1759,7 +1760,7 @@ void SDL_GetJoystickGUIDInfo(SDL_JoystickGUID guid, Uint16 *vendor, Uint16 *prod
         /* guid16[4] is product ID */
         guid16[5] == 0x0000
         /* guid16[6] is product version */
-   ) {
+    ) {
         if (vendor) {
             *vendor = guid16[2];
         }
@@ -1799,7 +1800,8 @@ PrefixMatch(const char *a, const char *b)
 char *
 SDL_CreateJoystickName(Uint16 vendor, Uint16 product, const char *vendor_name, const char *product_name)
 {
-    static struct {
+    static struct
+    {
         const char *prefix;
         const char *replacement;
     } replacements[] = {
@@ -1834,7 +1836,7 @@ SDL_CreateJoystickName(Uint16 vendor, Uint16 product, const char *vendor_name, c
 
     if (*vendor_name && *product_name) {
         len = (SDL_strlen(vendor_name) + 1 + SDL_strlen(product_name) + 1);
-        name = (char *)SDL_malloc(len);
+        name = (char *) SDL_malloc(len);
         if (!name) {
             return NULL;
         }
@@ -1843,7 +1845,7 @@ SDL_CreateJoystickName(Uint16 vendor, Uint16 product, const char *vendor_name, c
         name = SDL_strdup(product_name);
     } else if (vendor || product) {
         len = (6 + 1 + 6 + 1);
-        name = (char *)SDL_malloc(len);
+        name = (char *) SDL_malloc(len);
         if (!name) {
             return NULL;
         }
@@ -1859,9 +1861,9 @@ SDL_CreateJoystickName(Uint16 vendor, Uint16 product, const char *vendor_name, c
     name[len] = '\0';
 
     /* Compress duplicate spaces */
-    for (i = 0; i < (len - 1); ) {
-        if (name[i] == ' ' && name[i+1] == ' ') {
-            SDL_memmove(&name[i], &name[i+1], (len - i));
+    for (i = 0; i < (len - 1);) {
+        if (name[i] == ' ' && name[i + 1] == ' ') {
+            SDL_memmove(&name[i], &name[i + 1], (len - i));
             --len;
         } else {
             ++i;
@@ -1875,7 +1877,7 @@ SDL_CreateJoystickName(Uint16 vendor, Uint16 product, const char *vendor_name, c
             size_t replacementlen = SDL_strlen(replacements[i].replacement);
             if (replacementlen <= prefixlen) {
                 SDL_memcpy(name, replacements[i].replacement, replacementlen);
-                SDL_memmove(name+replacementlen, name+prefixlen, (len-prefixlen)+1);
+                SDL_memmove(name + replacementlen, name + prefixlen, (len - prefixlen) + 1);
                 len -= (prefixlen - replacementlen);
             } else {
                 /* FIXME: Need to handle the expand case by reallocating the string */
@@ -1887,11 +1889,11 @@ SDL_CreateJoystickName(Uint16 vendor, Uint16 product, const char *vendor_name, c
     /* Remove duplicate manufacturer or product in the name */
     for (i = 1; i < (len - 1); ++i) {
         int matchlen = PrefixMatch(name, &name[i]);
-        if (matchlen > 0 && name[matchlen-1] == ' ') {
-            SDL_memmove(name, name+matchlen, len-matchlen+1);
+        if (matchlen > 0 && name[matchlen - 1] == ' ') {
+            SDL_memmove(name, name + matchlen, len - matchlen + 1);
             break;
         } else if (matchlen > 0 && name[matchlen] == ' ') {
-            SDL_memmove(name, name+matchlen+1, len-matchlen);
+            SDL_memmove(name, name + matchlen + 1, len - matchlen);
             break;
         }
     }
@@ -1927,7 +1929,7 @@ SDL_GetJoystickGameControllerType(const char *name, Uint16 vendor, Uint16 produc
 {
     static const int LIBUSB_CLASS_VENDOR_SPEC = 0xFF;
     static const int XB360_IFACE_SUBCLASS = 93;
-    static const int XB360_IFACE_PROTOCOL = 1; /* Wired */
+    static const int XB360_IFACE_PROTOCOL = 1;    /* Wired */
     static const int XB360W_IFACE_PROTOCOL = 129; /* Wireless */
     static const int XBONE_IFACE_SUBCLASS = 71;
     static const int XBONE_IFACE_PROTOCOL = 208;
@@ -2029,7 +2031,7 @@ SDL_GetJoystickGameControllerType(const char *name, Uint16 vendor, Uint16 produc
             type = SDL_CONTROLLER_TYPE_GOOGLE_STADIA;
 
         } else if (vendor == USB_VENDOR_NINTENDO && product == USB_PRODUCT_NINTENDO_SWITCH_JOY_CON_GRIP) {
-                type = SDL_GetHintBoolean(SDL_HINT_JOYSTICK_HIDAPI_JOY_CONS, SDL_FALSE) ? SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_PRO : SDL_CONTROLLER_TYPE_UNKNOWN;
+            type = SDL_GetHintBoolean(SDL_HINT_JOYSTICK_HIDAPI_JOY_CONS, SDL_FALSE) ? SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_PRO : SDL_CONTROLLER_TYPE_UNKNOWN;
 
         } else {
             switch (GuessControllerType(vendor, product)) {
@@ -2219,31 +2221,32 @@ SDL_IsJoystickVirtual(SDL_JoystickGUID guid)
     return (guid.data[14] == 'v') ? SDL_TRUE : SDL_FALSE;
 }
 
-static SDL_bool SDL_IsJoystickProductWheel(Uint32 vidpid)
+static SDL_bool
+SDL_IsJoystickProductWheel(Uint32 vidpid)
 {
     static Uint32 wheel_joysticks[] = {
-        MAKE_VIDPID(0x046d, 0xc294),    /* Logitech generic wheel */
-        MAKE_VIDPID(0x046d, 0xc295),    /* Logitech Momo Force */
-        MAKE_VIDPID(0x046d, 0xc298),    /* Logitech Driving Force Pro */
-        MAKE_VIDPID(0x046d, 0xc299),    /* Logitech G25 */
-        MAKE_VIDPID(0x046d, 0xc29a),    /* Logitech Driving Force GT */
-        MAKE_VIDPID(0x046d, 0xc29b),    /* Logitech G27 */
-        MAKE_VIDPID(0x046d, 0xc24f),    /* Logitech G29 (PS3) */
-        MAKE_VIDPID(0x046d, 0xc260),    /* Logitech G29 (PS4) */
-        MAKE_VIDPID(0x046d, 0xc261),    /* Logitech G920 (initial mode) */
-        MAKE_VIDPID(0x046d, 0xc262),    /* Logitech G920 (active mode) */
-        MAKE_VIDPID(0x046d, 0xc26e),    /* Logitech G923 */
-        MAKE_VIDPID(0x046d, 0xca03),    /* Logitech Momo Racing */
-        MAKE_VIDPID(0x044f, 0xb65d),    /* Thrustmaster Wheel FFB */
-        MAKE_VIDPID(0x044f, 0xb66d),    /* Thrustmaster Wheel FFB */
-        MAKE_VIDPID(0x044f, 0xb677),    /* Thrustmaster T150 */
-        MAKE_VIDPID(0x044f, 0xb696),    /* Thrustmaster T248 */
-        MAKE_VIDPID(0x044f, 0xb66e),    /* Thrustmaster T300RS (normal mode) */
-        MAKE_VIDPID(0x044f, 0xb66f),    /* Thrustmaster T300RS (advanced mode) */
-        MAKE_VIDPID(0x044f, 0xb66d),    /* Thrustmaster T300RS (PS4 mode) */
-        MAKE_VIDPID(0x044f, 0xb65e),    /* Thrustmaster T500RS */
-        MAKE_VIDPID(0x044f, 0xb664),    /* Thrustmaster TX (initial mode) */
-        MAKE_VIDPID(0x044f, 0xb669),    /* Thrustmaster TX (active mode) */
+        MAKE_VIDPID(0x046d, 0xc294), /* Logitech generic wheel */
+        MAKE_VIDPID(0x046d, 0xc295), /* Logitech Momo Force */
+        MAKE_VIDPID(0x046d, 0xc298), /* Logitech Driving Force Pro */
+        MAKE_VIDPID(0x046d, 0xc299), /* Logitech G25 */
+        MAKE_VIDPID(0x046d, 0xc29a), /* Logitech Driving Force GT */
+        MAKE_VIDPID(0x046d, 0xc29b), /* Logitech G27 */
+        MAKE_VIDPID(0x046d, 0xc24f), /* Logitech G29 (PS3) */
+        MAKE_VIDPID(0x046d, 0xc260), /* Logitech G29 (PS4) */
+        MAKE_VIDPID(0x046d, 0xc261), /* Logitech G920 (initial mode) */
+        MAKE_VIDPID(0x046d, 0xc262), /* Logitech G920 (active mode) */
+        MAKE_VIDPID(0x046d, 0xc26e), /* Logitech G923 */
+        MAKE_VIDPID(0x046d, 0xca03), /* Logitech Momo Racing */
+        MAKE_VIDPID(0x044f, 0xb65d), /* Thrustmaster Wheel FFB */
+        MAKE_VIDPID(0x044f, 0xb66d), /* Thrustmaster Wheel FFB */
+        MAKE_VIDPID(0x044f, 0xb677), /* Thrustmaster T150 */
+        MAKE_VIDPID(0x044f, 0xb696), /* Thrustmaster T248 */
+        MAKE_VIDPID(0x044f, 0xb66e), /* Thrustmaster T300RS (normal mode) */
+        MAKE_VIDPID(0x044f, 0xb66f), /* Thrustmaster T300RS (advanced mode) */
+        MAKE_VIDPID(0x044f, 0xb66d), /* Thrustmaster T300RS (PS4 mode) */
+        MAKE_VIDPID(0x044f, 0xb65e), /* Thrustmaster T500RS */
+        MAKE_VIDPID(0x044f, 0xb664), /* Thrustmaster TX (initial mode) */
+        MAKE_VIDPID(0x044f, 0xb669), /* Thrustmaster TX (active mode) */
     };
     int i;
 
@@ -2255,29 +2258,30 @@ static SDL_bool SDL_IsJoystickProductWheel(Uint32 vidpid)
     return SDL_FALSE;
 }
 
-static SDL_bool SDL_IsJoystickProductArcadeStick(Uint32 vidpid)
+static SDL_bool
+SDL_IsJoystickProductArcadeStick(Uint32 vidpid)
 {
     static Uint32 arcadestick_joysticks[] = {
-        MAKE_VIDPID(0x0079, 0x181a),    /* Venom Arcade Stick */
-        MAKE_VIDPID(0x0f0d, 0x006a),    /* Real Arcade Pro 4 */
-        MAKE_VIDPID(0x0079, 0x181b),    /* Venom Arcade Stick */
-        MAKE_VIDPID(0x0c12, 0x0ef6),    /* Hitbox Arcade Stick */
-        MAKE_VIDPID(0x0f0d, 0x008a),    /* HORI Real Arcade Pro 4 */
-        MAKE_VIDPID(0x0f0d, 0x0016),    /* Hori Real Arcade Pro.EX */
-        MAKE_VIDPID(0x0f0d, 0x001b),    /* Hori Real Arcade Pro VX */
-        MAKE_VIDPID(0x0f0d, 0x008c),    /* Hori Real Arcade Pro 4 */
-        MAKE_VIDPID(0x1bad, 0xf03d),    /* Street Fighter IV Arcade Stick TE - Chun Li */
-        MAKE_VIDPID(0x1bad, 0xf502),    /* Hori Real Arcade Pro.VX SA */
-        MAKE_VIDPID(0x1bad, 0xf504),    /* Hori Real Arcade Pro. EX */
-        MAKE_VIDPID(0x1bad, 0xf506),    /* Hori Real Arcade Pro.EX Premium VLX */
-        MAKE_VIDPID(0x24c6, 0x5000),    /* Razer Atrox Arcade Stick */
-        MAKE_VIDPID(0x24c6, 0x5501),    /* Hori Real Arcade Pro VX-SA */
-        MAKE_VIDPID(0x24c6, 0x550e),    /* Hori Real Arcade Pro V Kai 360 */
-        MAKE_VIDPID(0x0f0d, 0x0063),    /* Hori Real Arcade Pro Hayabusa (USA) Xbox One */
-        MAKE_VIDPID(0x0f0d, 0x0078),    /* Hori Real Arcade Pro V Kai Xbox One */
-        MAKE_VIDPID(0x1532, 0x0a00),    /* Razer Atrox Arcade Stick */
-        MAKE_VIDPID(0x0f0d, 0x00aa),    /* HORI Real Arcade Pro V Hayabusa in Switch Mode */
-        MAKE_VIDPID(0x20d6, 0xa715),    /* PowerA Nintendo Switch Fusion Arcade Stick */
+        MAKE_VIDPID(0x0079, 0x181a), /* Venom Arcade Stick */
+        MAKE_VIDPID(0x0f0d, 0x006a), /* Real Arcade Pro 4 */
+        MAKE_VIDPID(0x0079, 0x181b), /* Venom Arcade Stick */
+        MAKE_VIDPID(0x0c12, 0x0ef6), /* Hitbox Arcade Stick */
+        MAKE_VIDPID(0x0f0d, 0x008a), /* HORI Real Arcade Pro 4 */
+        MAKE_VIDPID(0x0f0d, 0x0016), /* Hori Real Arcade Pro.EX */
+        MAKE_VIDPID(0x0f0d, 0x001b), /* Hori Real Arcade Pro VX */
+        MAKE_VIDPID(0x0f0d, 0x008c), /* Hori Real Arcade Pro 4 */
+        MAKE_VIDPID(0x1bad, 0xf03d), /* Street Fighter IV Arcade Stick TE - Chun Li */
+        MAKE_VIDPID(0x1bad, 0xf502), /* Hori Real Arcade Pro.VX SA */
+        MAKE_VIDPID(0x1bad, 0xf504), /* Hori Real Arcade Pro. EX */
+        MAKE_VIDPID(0x1bad, 0xf506), /* Hori Real Arcade Pro.EX Premium VLX */
+        MAKE_VIDPID(0x24c6, 0x5000), /* Razer Atrox Arcade Stick */
+        MAKE_VIDPID(0x24c6, 0x5501), /* Hori Real Arcade Pro VX-SA */
+        MAKE_VIDPID(0x24c6, 0x550e), /* Hori Real Arcade Pro V Kai 360 */
+        MAKE_VIDPID(0x0f0d, 0x0063), /* Hori Real Arcade Pro Hayabusa (USA) Xbox One */
+        MAKE_VIDPID(0x0f0d, 0x0078), /* Hori Real Arcade Pro V Kai Xbox One */
+        MAKE_VIDPID(0x1532, 0x0a00), /* Razer Atrox Arcade Stick */
+        MAKE_VIDPID(0x0f0d, 0x00aa), /* HORI Real Arcade Pro V Hayabusa in Switch Mode */
+        MAKE_VIDPID(0x20d6, 0xa715), /* PowerA Nintendo Switch Fusion Arcade Stick */
     };
     int i;
 
@@ -2289,12 +2293,13 @@ static SDL_bool SDL_IsJoystickProductArcadeStick(Uint32 vidpid)
     return SDL_FALSE;
 }
 
-static SDL_bool SDL_IsJoystickProductFlightStick(Uint32 vidpid)
+static SDL_bool
+SDL_IsJoystickProductFlightStick(Uint32 vidpid)
 {
     static Uint32 flightstick_joysticks[] = {
-        MAKE_VIDPID(0x044f, 0x0402),    /* HOTAS Warthog Joystick */
-        MAKE_VIDPID(0x0738, 0x2221),    /* Saitek Pro Flight X-56 Rhino Stick */
-        MAKE_VIDPID(0x044f, 0xb10a),    /* ThrustMaster, Inc. T.16000M Joystick */
+        MAKE_VIDPID(0x044f, 0x0402), /* HOTAS Warthog Joystick */
+        MAKE_VIDPID(0x0738, 0x2221), /* Saitek Pro Flight X-56 Rhino Stick */
+        MAKE_VIDPID(0x044f, 0xb10a), /* ThrustMaster, Inc. T.16000M Joystick */
     };
     int i;
 
@@ -2306,11 +2311,12 @@ static SDL_bool SDL_IsJoystickProductFlightStick(Uint32 vidpid)
     return SDL_FALSE;
 }
 
-static SDL_bool SDL_IsJoystickProductThrottle(Uint32 vidpid)
+static SDL_bool
+SDL_IsJoystickProductThrottle(Uint32 vidpid)
 {
     static Uint32 throttle_joysticks[] = {
-        MAKE_VIDPID(0x044f, 0x0404),    /* HOTAS Warthog Throttle */
-        MAKE_VIDPID(0x0738, 0xa221),    /* Saitek Pro Flight X-56 Rhino Throttle */
+        MAKE_VIDPID(0x044f, 0x0404), /* HOTAS Warthog Throttle */
+        MAKE_VIDPID(0x0738, 0xa221), /* Saitek Pro Flight X-56 Rhino Throttle */
     };
     int i;
 
@@ -2322,7 +2328,8 @@ static SDL_bool SDL_IsJoystickProductThrottle(Uint32 vidpid)
     return SDL_FALSE;
 }
 
-static SDL_JoystickType SDL_GetJoystickGUIDType(SDL_JoystickGUID guid)
+static SDL_JoystickType
+SDL_GetJoystickGUIDType(SDL_JoystickGUID guid)
 {
     Uint16 vendor;
     Uint16 product;
@@ -2331,23 +2338,23 @@ static SDL_JoystickType SDL_GetJoystickGUIDType(SDL_JoystickGUID guid)
     if (SDL_IsJoystickXInput(guid)) {
         /* XInput GUID, get the type based on the XInput device subtype */
         switch (guid.data[15]) {
-        case 0x01:  /* XINPUT_DEVSUBTYPE_GAMEPAD */
+        case 0x01: /* XINPUT_DEVSUBTYPE_GAMEPAD */
             return SDL_JOYSTICK_TYPE_GAMECONTROLLER;
-        case 0x02:  /* XINPUT_DEVSUBTYPE_WHEEL */
+        case 0x02: /* XINPUT_DEVSUBTYPE_WHEEL */
             return SDL_JOYSTICK_TYPE_WHEEL;
-        case 0x03:  /* XINPUT_DEVSUBTYPE_ARCADE_STICK */
+        case 0x03: /* XINPUT_DEVSUBTYPE_ARCADE_STICK */
             return SDL_JOYSTICK_TYPE_ARCADE_STICK;
-        case 0x04:  /* XINPUT_DEVSUBTYPE_FLIGHT_STICK */
+        case 0x04: /* XINPUT_DEVSUBTYPE_FLIGHT_STICK */
             return SDL_JOYSTICK_TYPE_FLIGHT_STICK;
-        case 0x05:  /* XINPUT_DEVSUBTYPE_DANCE_PAD */
+        case 0x05: /* XINPUT_DEVSUBTYPE_DANCE_PAD */
             return SDL_JOYSTICK_TYPE_DANCE_PAD;
-        case 0x06:  /* XINPUT_DEVSUBTYPE_GUITAR */
-        case 0x07:  /* XINPUT_DEVSUBTYPE_GUITAR_ALTERNATE */
-        case 0x0B:  /* XINPUT_DEVSUBTYPE_GUITAR_BASS */
+        case 0x06: /* XINPUT_DEVSUBTYPE_GUITAR */
+        case 0x07: /* XINPUT_DEVSUBTYPE_GUITAR_ALTERNATE */
+        case 0x0B: /* XINPUT_DEVSUBTYPE_GUITAR_BASS */
             return SDL_JOYSTICK_TYPE_GUITAR;
-        case 0x08:  /* XINPUT_DEVSUBTYPE_DRUM_KIT */
+        case 0x08: /* XINPUT_DEVSUBTYPE_DRUM_KIT */
             return SDL_JOYSTICK_TYPE_DRUM_KIT;
-        case 0x13:  /* XINPUT_DEVSUBTYPE_ARCADE_PAD */
+        case 0x13: /* XINPUT_DEVSUBTYPE_ARCADE_PAD */
             return SDL_JOYSTICK_TYPE_ARCADE_PAD;
         default:
             return SDL_JOYSTICK_TYPE_UNKNOWN;
@@ -2355,11 +2362,11 @@ static SDL_JoystickType SDL_GetJoystickGUIDType(SDL_JoystickGUID guid)
     }
 
     if (SDL_IsJoystickWGI(guid)) {
-        return (SDL_JoystickType)guid.data[15];
+        return (SDL_JoystickType) guid.data[15];
     }
 
     if (SDL_IsJoystickVirtual(guid)) {
-        return (SDL_JoystickType)guid.data[15];
+        return (SDL_JoystickType) guid.data[15];
     }
 
     SDL_GetJoystickGUIDInfo(guid, &vendor, &product, NULL);
@@ -2388,7 +2395,8 @@ static SDL_JoystickType SDL_GetJoystickGUIDType(SDL_JoystickGUID guid)
     return SDL_JOYSTICK_TYPE_UNKNOWN;
 }
 
-static SDL_bool SDL_IsPS4RemapperRunning(void)
+static SDL_bool
+SDL_IsPS4RemapperRunning(void)
 {
 #ifdef __WIN32__
     const char *mapper_processes[] = {
@@ -2404,14 +2412,14 @@ static SDL_bool SDL_IsPS4RemapperRunning(void)
     if (hProcessSnap != INVALID_HANDLE_VALUE) {
         pe32.dwSize = sizeof(PROCESSENTRY32);
         if (Process32First(hProcessSnap, &pe32)) {
-            do
-            {
+            do {
                 for (i = 0; i < SDL_arraysize(mapper_processes); ++i) {
                     if (SDL_strcasecmp(pe32.szExeFile, mapper_processes[i]) == 0) {
                         found = SDL_TRUE;
                     }
                 }
-            } while (Process32Next(hProcessSnap, &pe32) && !found);
+            }
+            while (Process32Next(hProcessSnap, &pe32) && !found);
         }
         CloseHandle(hProcessSnap);
     }
@@ -2421,7 +2429,8 @@ static SDL_bool SDL_IsPS4RemapperRunning(void)
 #endif
 }
 
-SDL_bool SDL_ShouldIgnoreJoystick(const char *name, SDL_JoystickGUID guid)
+SDL_bool
+SDL_ShouldIgnoreJoystick(const char *name, SDL_JoystickGUID guid)
 {
     /* This list is taken from:
        https://raw.githubusercontent.com/denilsonsa/udev-joystick-blacklist/master/generate_rules.py
@@ -2473,75 +2482,75 @@ SDL_bool SDL_ShouldIgnoreJoystick(const char *name, SDL_JoystickGUID guid)
         /* Microsoft Nano Transceiver v2.0 */
         MAKE_VIDPID(0x045e, 0x0800),
 
-        MAKE_VIDPID(0x046d, 0xc30a),  /* Logitech, Inc. iTouch Composite keboard */
+        MAKE_VIDPID(0x046d, 0xc30a), /* Logitech, Inc. iTouch Composite keboard */
 
-        MAKE_VIDPID(0x04d9, 0xa0df),  /* Tek Syndicate Mouse (E-Signal USB Gaming Mouse) */
+        MAKE_VIDPID(0x04d9, 0xa0df), /* Tek Syndicate Mouse (E-Signal USB Gaming Mouse) */
 
         /* List of Wacom devices at: http://linuxwacom.sourceforge.net/wiki/index.php/Device_IDs */
-        MAKE_VIDPID(0x056a, 0x0010),  /* Wacom ET-0405 Graphire */
-        MAKE_VIDPID(0x056a, 0x0011),  /* Wacom ET-0405A Graphire2 (4x5) */
-        MAKE_VIDPID(0x056a, 0x0012),  /* Wacom ET-0507A Graphire2 (5x7) */
-        MAKE_VIDPID(0x056a, 0x0013),  /* Wacom CTE-430 Graphire3 (4x5) */
-        MAKE_VIDPID(0x056a, 0x0014),  /* Wacom CTE-630 Graphire3 (6x8) */
-        MAKE_VIDPID(0x056a, 0x0015),  /* Wacom CTE-440 Graphire4 (4x5) */
-        MAKE_VIDPID(0x056a, 0x0016),  /* Wacom CTE-640 Graphire4 (6x8) */
-        MAKE_VIDPID(0x056a, 0x0017),  /* Wacom CTE-450 Bamboo Fun (4x5) */
-        MAKE_VIDPID(0x056a, 0x0018),  /* Wacom CTE-650 Bamboo Fun 6x8 */
-        MAKE_VIDPID(0x056a, 0x0019),  /* Wacom CTE-631 Bamboo One */
-        MAKE_VIDPID(0x056a, 0x00d1),  /* Wacom Bamboo Pen and Touch CTH-460 */
-        MAKE_VIDPID(0x056a, 0x030e),  /* Wacom Intuos Pen (S) CTL-480 */
+        MAKE_VIDPID(0x056a, 0x0010), /* Wacom ET-0405 Graphire */
+        MAKE_VIDPID(0x056a, 0x0011), /* Wacom ET-0405A Graphire2 (4x5) */
+        MAKE_VIDPID(0x056a, 0x0012), /* Wacom ET-0507A Graphire2 (5x7) */
+        MAKE_VIDPID(0x056a, 0x0013), /* Wacom CTE-430 Graphire3 (4x5) */
+        MAKE_VIDPID(0x056a, 0x0014), /* Wacom CTE-630 Graphire3 (6x8) */
+        MAKE_VIDPID(0x056a, 0x0015), /* Wacom CTE-440 Graphire4 (4x5) */
+        MAKE_VIDPID(0x056a, 0x0016), /* Wacom CTE-640 Graphire4 (6x8) */
+        MAKE_VIDPID(0x056a, 0x0017), /* Wacom CTE-450 Bamboo Fun (4x5) */
+        MAKE_VIDPID(0x056a, 0x0018), /* Wacom CTE-650 Bamboo Fun 6x8 */
+        MAKE_VIDPID(0x056a, 0x0019), /* Wacom CTE-631 Bamboo One */
+        MAKE_VIDPID(0x056a, 0x00d1), /* Wacom Bamboo Pen and Touch CTH-460 */
+        MAKE_VIDPID(0x056a, 0x030e), /* Wacom Intuos Pen (S) CTL-480 */
 
-        MAKE_VIDPID(0x09da, 0x054f),  /* A4 Tech Co., G7 750 mouse */
-        MAKE_VIDPID(0x09da, 0x1410),  /* A4 Tech Co., Ltd Bloody AL9 mouse */
-        MAKE_VIDPID(0x09da, 0x3043),  /* A4 Tech Co., Ltd Bloody R8A Gaming Mouse */
-        MAKE_VIDPID(0x09da, 0x31b5),  /* A4 Tech Co., Ltd Bloody TL80 Terminator Laser Gaming Mouse */
-        MAKE_VIDPID(0x09da, 0x3997),  /* A4 Tech Co., Ltd Bloody RT7 Terminator Wireless */
-        MAKE_VIDPID(0x09da, 0x3f8b),  /* A4 Tech Co., Ltd Bloody V8 mouse */
-        MAKE_VIDPID(0x09da, 0x51f4),  /* Modecom MC-5006 Keyboard */
-        MAKE_VIDPID(0x09da, 0x5589),  /* A4 Tech Co., Ltd Terminator TL9 Laser Gaming Mouse */
-        MAKE_VIDPID(0x09da, 0x7b22),  /* A4 Tech Co., Ltd Bloody V5 */
-        MAKE_VIDPID(0x09da, 0x7f2d),  /* A4 Tech Co., Ltd Bloody R3 mouse */
-        MAKE_VIDPID(0x09da, 0x8090),  /* A4 Tech Co., Ltd X-718BK Oscar Optical Gaming Mouse */
-        MAKE_VIDPID(0x09da, 0x9033),  /* A4 Tech Co., X7 X-705K */
-        MAKE_VIDPID(0x09da, 0x9066),  /* A4 Tech Co., Sharkoon Fireglider Optical */
-        MAKE_VIDPID(0x09da, 0x9090),  /* A4 Tech Co., Ltd XL-730K / XL-750BK / XL-755BK Laser Mouse */
-        MAKE_VIDPID(0x09da, 0x90c0),  /* A4 Tech Co., Ltd X7 G800V keyboard */
-        MAKE_VIDPID(0x09da, 0xf012),  /* A4 Tech Co., Ltd Bloody V7 mouse */
-        MAKE_VIDPID(0x09da, 0xf32a),  /* A4 Tech Co., Ltd Bloody B540 keyboard */
-        MAKE_VIDPID(0x09da, 0xf613),  /* A4 Tech Co., Ltd Bloody V2 mouse */
-        MAKE_VIDPID(0x09da, 0xf624),  /* A4 Tech Co., Ltd Bloody B120 Keyboard */
+        MAKE_VIDPID(0x09da, 0x054f), /* A4 Tech Co., G7 750 mouse */
+        MAKE_VIDPID(0x09da, 0x1410), /* A4 Tech Co., Ltd Bloody AL9 mouse */
+        MAKE_VIDPID(0x09da, 0x3043), /* A4 Tech Co., Ltd Bloody R8A Gaming Mouse */
+        MAKE_VIDPID(0x09da, 0x31b5), /* A4 Tech Co., Ltd Bloody TL80 Terminator Laser Gaming Mouse */
+        MAKE_VIDPID(0x09da, 0x3997), /* A4 Tech Co., Ltd Bloody RT7 Terminator Wireless */
+        MAKE_VIDPID(0x09da, 0x3f8b), /* A4 Tech Co., Ltd Bloody V8 mouse */
+        MAKE_VIDPID(0x09da, 0x51f4), /* Modecom MC-5006 Keyboard */
+        MAKE_VIDPID(0x09da, 0x5589), /* A4 Tech Co., Ltd Terminator TL9 Laser Gaming Mouse */
+        MAKE_VIDPID(0x09da, 0x7b22), /* A4 Tech Co., Ltd Bloody V5 */
+        MAKE_VIDPID(0x09da, 0x7f2d), /* A4 Tech Co., Ltd Bloody R3 mouse */
+        MAKE_VIDPID(0x09da, 0x8090), /* A4 Tech Co., Ltd X-718BK Oscar Optical Gaming Mouse */
+        MAKE_VIDPID(0x09da, 0x9033), /* A4 Tech Co., X7 X-705K */
+        MAKE_VIDPID(0x09da, 0x9066), /* A4 Tech Co., Sharkoon Fireglider Optical */
+        MAKE_VIDPID(0x09da, 0x9090), /* A4 Tech Co., Ltd XL-730K / XL-750BK / XL-755BK Laser Mouse */
+        MAKE_VIDPID(0x09da, 0x90c0), /* A4 Tech Co., Ltd X7 G800V keyboard */
+        MAKE_VIDPID(0x09da, 0xf012), /* A4 Tech Co., Ltd Bloody V7 mouse */
+        MAKE_VIDPID(0x09da, 0xf32a), /* A4 Tech Co., Ltd Bloody B540 keyboard */
+        MAKE_VIDPID(0x09da, 0xf613), /* A4 Tech Co., Ltd Bloody V2 mouse */
+        MAKE_VIDPID(0x09da, 0xf624), /* A4 Tech Co., Ltd Bloody B120 Keyboard */
 
-        MAKE_VIDPID(0x1b1c, 0x1b3c),  /* Corsair Harpoon RGB gaming mouse */
+        MAKE_VIDPID(0x1b1c, 0x1b3c), /* Corsair Harpoon RGB gaming mouse */
 
-        MAKE_VIDPID(0x1d57, 0xad03),  /* [T3] 2.4GHz and IR Air Mouse Remote Control */
+        MAKE_VIDPID(0x1d57, 0xad03), /* [T3] 2.4GHz and IR Air Mouse Remote Control */
 
-        MAKE_VIDPID(0x1e7d, 0x2e4a),  /* Roccat Tyon Mouse */
+        MAKE_VIDPID(0x1e7d, 0x2e4a), /* Roccat Tyon Mouse */
 
-        MAKE_VIDPID(0x20a0, 0x422d),  /* Winkeyless.kr Keyboards */
+        MAKE_VIDPID(0x20a0, 0x422d), /* Winkeyless.kr Keyboards */
 
-        MAKE_VIDPID(0x2516, 0x001f),  /* Cooler Master Storm Mizar Mouse */
-        MAKE_VIDPID(0x2516, 0x0028),  /* Cooler Master Storm Alcor Mouse */
+        MAKE_VIDPID(0x2516, 0x001f), /* Cooler Master Storm Mizar Mouse */
+        MAKE_VIDPID(0x2516, 0x0028), /* Cooler Master Storm Alcor Mouse */
 
         /*****************************************************************/
         /* Additional entries                                            */
         /*****************************************************************/
 
-        MAKE_VIDPID(0x04d9, 0x8008),  /* OBINLB USB-HID Keyboard (Anne Pro II) */
-        MAKE_VIDPID(0x04d9, 0x8009),  /* OBINLB USB-HID Keyboard (Anne Pro II) */
-        MAKE_VIDPID(0x04d9, 0xa292),  /* OBINLB USB-HID Keyboard (Anne Pro II) */
-        MAKE_VIDPID(0x04d9, 0xa293),  /* OBINLB USB-HID Keyboard (Anne Pro II) */
-        MAKE_VIDPID(0x1532, 0x0266),  /* Razer Huntman V2 Analog, non-functional DInput device */
-        MAKE_VIDPID(0x1532, 0x0282),  /* Razer Huntman Mini Analog, non-functional DInput device */
-        MAKE_VIDPID(0x26ce, 0x01a2),  /* ASRock LED Controller */
+        MAKE_VIDPID(0x04d9, 0x8008), /* OBINLB USB-HID Keyboard (Anne Pro II) */
+        MAKE_VIDPID(0x04d9, 0x8009), /* OBINLB USB-HID Keyboard (Anne Pro II) */
+        MAKE_VIDPID(0x04d9, 0xa292), /* OBINLB USB-HID Keyboard (Anne Pro II) */
+        MAKE_VIDPID(0x04d9, 0xa293), /* OBINLB USB-HID Keyboard (Anne Pro II) */
+        MAKE_VIDPID(0x1532, 0x0266), /* Razer Huntman V2 Analog, non-functional DInput device */
+        MAKE_VIDPID(0x1532, 0x0282), /* Razer Huntman Mini Analog, non-functional DInput device */
+        MAKE_VIDPID(0x26ce, 0x01a2), /* ASRock LED Controller */
     };
 
     static Uint32 rog_chakram_list[] = {
-        MAKE_VIDPID(0x0b05, 0x1958),  /* ROG Chakram Core Mouse */
-        MAKE_VIDPID(0x0b05, 0x18e3),  /* ROG Chakram (wired) Mouse */
-        MAKE_VIDPID(0x0b05, 0x18e5),  /* ROG Chakram (wireless) Mouse */
-        MAKE_VIDPID(0x0b05, 0x1a18),  /* ROG Chakram X (wired) Mouse */
-        MAKE_VIDPID(0x0b05, 0x1a1a),  /* ROG Chakram X (wireless) Mouse */
-        MAKE_VIDPID(0x0b05, 0x1a1c),  /* ROG Chakram X (Bluetooth) Mouse */
+        MAKE_VIDPID(0x0b05, 0x1958), /* ROG Chakram Core Mouse */
+        MAKE_VIDPID(0x0b05, 0x18e3), /* ROG Chakram (wired) Mouse */
+        MAKE_VIDPID(0x0b05, 0x18e5), /* ROG Chakram (wireless) Mouse */
+        MAKE_VIDPID(0x0b05, 0x1a18), /* ROG Chakram X (wired) Mouse */
+        MAKE_VIDPID(0x0b05, 0x1a1a), /* ROG Chakram X (wireless) Mouse */
+        MAKE_VIDPID(0x0b05, 0x1a1c), /* ROG Chakram X (Bluetooth) Mouse */
     };
 
     unsigned int i;
@@ -2580,7 +2589,8 @@ SDL_bool SDL_ShouldIgnoreJoystick(const char *name, SDL_JoystickGUID guid)
 }
 
 /* return the guid for this index */
-SDL_JoystickGUID SDL_JoystickGetDeviceGUID(int device_index)
+SDL_JoystickGUID
+SDL_JoystickGetDeviceGUID(int device_index)
 {
     SDL_JoystickDriver *driver;
     SDL_JoystickGUID guid;
@@ -2596,7 +2606,8 @@ SDL_JoystickGUID SDL_JoystickGetDeviceGUID(int device_index)
     return guid;
 }
 
-Uint16 SDL_JoystickGetDeviceVendor(int device_index)
+Uint16
+SDL_JoystickGetDeviceVendor(int device_index)
 {
     Uint16 vendor;
     SDL_JoystickGUID guid = SDL_JoystickGetDeviceGUID(device_index);
@@ -2605,7 +2616,8 @@ Uint16 SDL_JoystickGetDeviceVendor(int device_index)
     return vendor;
 }
 
-Uint16 SDL_JoystickGetDeviceProduct(int device_index)
+Uint16
+SDL_JoystickGetDeviceProduct(int device_index)
 {
     Uint16 product;
     SDL_JoystickGUID guid = SDL_JoystickGetDeviceGUID(device_index);
@@ -2614,7 +2626,8 @@ Uint16 SDL_JoystickGetDeviceProduct(int device_index)
     return product;
 }
 
-Uint16 SDL_JoystickGetDeviceProductVersion(int device_index)
+Uint16
+SDL_JoystickGetDeviceProductVersion(int device_index)
 {
     Uint16 version;
     SDL_JoystickGUID guid = SDL_JoystickGetDeviceGUID(device_index);
@@ -2623,7 +2636,8 @@ Uint16 SDL_JoystickGetDeviceProductVersion(int device_index)
     return version;
 }
 
-SDL_JoystickType SDL_JoystickGetDeviceType(int device_index)
+SDL_JoystickType
+SDL_JoystickGetDeviceType(int device_index)
 {
     SDL_JoystickType type;
     SDL_JoystickGUID guid = SDL_JoystickGetDeviceGUID(device_index);
@@ -2637,7 +2651,8 @@ SDL_JoystickType SDL_JoystickGetDeviceType(int device_index)
     return type;
 }
 
-SDL_JoystickID SDL_JoystickGetDeviceInstanceID(int device_index)
+SDL_JoystickID
+SDL_JoystickGetDeviceInstanceID(int device_index)
 {
     SDL_JoystickDriver *driver;
     SDL_JoystickID instance_id = -1;
@@ -2651,7 +2666,8 @@ SDL_JoystickID SDL_JoystickGetDeviceInstanceID(int device_index)
     return instance_id;
 }
 
-int SDL_JoystickGetDeviceIndexFromInstanceID(SDL_JoystickID instance_id)
+int
+SDL_JoystickGetDeviceIndexFromInstanceID(SDL_JoystickID instance_id)
 {
     int i, num_joysticks, device_index = -1;
 
@@ -2668,7 +2684,8 @@ int SDL_JoystickGetDeviceIndexFromInstanceID(SDL_JoystickID instance_id)
     return device_index;
 }
 
-SDL_JoystickGUID SDL_JoystickGetGUID(SDL_Joystick *joystick)
+SDL_JoystickGUID
+SDL_JoystickGetGUID(SDL_Joystick *joystick)
 {
     if (!SDL_PrivateJoystickValid(joystick)) {
         SDL_JoystickGUID emptyGUID;
@@ -2678,7 +2695,8 @@ SDL_JoystickGUID SDL_JoystickGetGUID(SDL_Joystick *joystick)
     return joystick->guid;
 }
 
-Uint16 SDL_JoystickGetVendor(SDL_Joystick *joystick)
+Uint16
+SDL_JoystickGetVendor(SDL_Joystick *joystick)
 {
     Uint16 vendor;
     SDL_JoystickGUID guid = SDL_JoystickGetGUID(joystick);
@@ -2687,7 +2705,8 @@ Uint16 SDL_JoystickGetVendor(SDL_Joystick *joystick)
     return vendor;
 }
 
-Uint16 SDL_JoystickGetProduct(SDL_Joystick *joystick)
+Uint16
+SDL_JoystickGetProduct(SDL_Joystick *joystick)
 {
     Uint16 product;
     SDL_JoystickGUID guid = SDL_JoystickGetGUID(joystick);
@@ -2696,7 +2715,8 @@ Uint16 SDL_JoystickGetProduct(SDL_Joystick *joystick)
     return product;
 }
 
-Uint16 SDL_JoystickGetProductVersion(SDL_Joystick *joystick)
+Uint16
+SDL_JoystickGetProductVersion(SDL_Joystick *joystick)
 {
     Uint16 version;
     SDL_JoystickGUID guid = SDL_JoystickGetGUID(joystick);
@@ -2705,7 +2725,8 @@ Uint16 SDL_JoystickGetProductVersion(SDL_Joystick *joystick)
     return version;
 }
 
-Uint16 SDL_JoystickGetFirmwareVersion(SDL_Joystick *joystick)
+Uint16
+SDL_JoystickGetFirmwareVersion(SDL_Joystick *joystick)
 {
     if (!SDL_PrivateJoystickValid(joystick)) {
         return 0;
@@ -2713,7 +2734,8 @@ Uint16 SDL_JoystickGetFirmwareVersion(SDL_Joystick *joystick)
     return joystick->firmware_version;
 }
 
-const char *SDL_JoystickGetSerial(SDL_Joystick *joystick)
+const char *
+SDL_JoystickGetSerial(SDL_Joystick *joystick)
 {
     if (!SDL_PrivateJoystickValid(joystick)) {
         return NULL;
@@ -2721,7 +2743,8 @@ const char *SDL_JoystickGetSerial(SDL_Joystick *joystick)
     return joystick->serial;
 }
 
-SDL_JoystickType SDL_JoystickGetType(SDL_Joystick *joystick)
+SDL_JoystickType
+SDL_JoystickGetType(SDL_Joystick *joystick)
 {
     SDL_JoystickType type;
     SDL_JoystickGUID guid = SDL_JoystickGetGUID(joystick);
@@ -2736,19 +2759,22 @@ SDL_JoystickType SDL_JoystickGetType(SDL_Joystick *joystick)
 }
 
 /* convert the guid to a printable string */
-void SDL_JoystickGetGUIDString(SDL_JoystickGUID guid, char *pszGUID, int cbGUID)
+void
+SDL_JoystickGetGUIDString(SDL_JoystickGUID guid, char *pszGUID, int cbGUID)
 {
     SDL_GUIDToString(guid, pszGUID, cbGUID);
 }
 
 /* convert the string version of a joystick guid to the struct */
-SDL_JoystickGUID SDL_JoystickGetGUIDFromString(const char *pchGUID)
+SDL_JoystickGUID
+SDL_JoystickGetGUIDFromString(const char *pchGUID)
 {
     return SDL_GUIDFromString(pchGUID);
 }
 
 /* update the power level for this joystick */
-void SDL_PrivateJoystickBatteryLevel(SDL_Joystick *joystick, SDL_JoystickPowerLevel ePowerLevel)
+void
+SDL_PrivateJoystickBatteryLevel(SDL_Joystick *joystick, SDL_JoystickPowerLevel ePowerLevel)
 {
     SDL_assert(joystick->ref_count); /* make sure we are calling this only for update, not for initialisation */
     if (ePowerLevel != joystick->epowerlevel) {
@@ -2766,7 +2792,8 @@ void SDL_PrivateJoystickBatteryLevel(SDL_Joystick *joystick, SDL_JoystickPowerLe
 }
 
 /* return its power level */
-SDL_JoystickPowerLevel SDL_JoystickCurrentPowerLevel(SDL_Joystick *joystick)
+SDL_JoystickPowerLevel
+SDL_JoystickCurrentPowerLevel(SDL_Joystick *joystick)
 {
     if (!SDL_PrivateJoystickValid(joystick)) {
         return SDL_JOYSTICK_POWER_UNKNOWN;
@@ -2774,7 +2801,8 @@ SDL_JoystickPowerLevel SDL_JoystickCurrentPowerLevel(SDL_Joystick *joystick)
     return joystick->epowerlevel;
 }
 
-int SDL_PrivateJoystickTouchpad(SDL_Joystick *joystick, int touchpad, int finger, Uint8 state, float x, float y, float pressure)
+int
+SDL_PrivateJoystickTouchpad(SDL_Joystick *joystick, int touchpad, int finger, Uint8 state, float x, float y, float pressure)
 {
     SDL_JoystickTouchpadInfo *touchpad_info;
     SDL_JoystickTouchpadFingerInfo *finger_info;
@@ -2862,7 +2890,8 @@ int SDL_PrivateJoystickTouchpad(SDL_Joystick *joystick, int touchpad, int finger
     return posted;
 }
 
-int SDL_PrivateJoystickSensor(SDL_Joystick *joystick, SDL_SensorType type, const float *data, int num_values)
+int
+SDL_PrivateJoystickSensor(SDL_Joystick *joystick, SDL_SensorType type, const float *data, int num_values)
 {
     int i;
     int posted = 0;
@@ -2880,7 +2909,7 @@ int SDL_PrivateJoystickSensor(SDL_Joystick *joystick, SDL_SensorType type, const
                 num_values = SDL_min(num_values, SDL_arraysize(sensor->data));
 
                 /* Update internal sensor state */
-                SDL_memcpy(sensor->data, data, num_values*sizeof(*data));
+                SDL_memcpy(sensor->data, data, num_values * sizeof(*data));
 
                 /* Post the event, if desired */
 #if !SDL_EVENTS_DISABLED
@@ -2891,7 +2920,7 @@ int SDL_PrivateJoystickSensor(SDL_Joystick *joystick, SDL_SensorType type, const
                     event.csensor.sensor = type;
                     num_values = SDL_min(num_values, SDL_arraysize(event.csensor.data));
                     SDL_memset(event.csensor.data, 0, sizeof(event.csensor.data));
-                    SDL_memcpy(event.csensor.data, data, num_values*sizeof(*data));
+                    SDL_memcpy(event.csensor.data, data, num_values * sizeof(*data));
                     posted = SDL_PushEvent(&event) == 1;
                 }
 #endif /* !SDL_EVENTS_DISABLED */
