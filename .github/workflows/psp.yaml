@@ -47,3 +47,15 @@ jobs:
         export PKG_CONFIG_PATH=${{ env.SDL2_DIR }}/lib/pkgconfig
         export EXTRA_LDFLAGS="-L$PSPDEV/lib -L$PSPDEV/psp/lib -L$PSPDEV/psp/sdk/lib"
         cmake/test/test_pkgconfig.sh
+
+    - name: Get short SHA
+      id: slug
+      run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
+
+    - name: Upload artifacts
+      if: ${{ success() }}
+      uses: actions/upload-artifact@v3
+      with:
+        name: tests-${{ steps.slug.outputs.sha8 }}
+        path: |
+          build/test
