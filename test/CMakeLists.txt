@@ -327,6 +327,7 @@ if(PSP)
         testatomic
         testaudiocapture
         testaudioinfo
+        testautomation
         testbounds
         testdisplayinfo
         testdraw2
