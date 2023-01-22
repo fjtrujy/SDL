@@ -41,8 +41,8 @@ typedef struct
     void *frontbuffer;         /**< main screen buffer */
     void *backbuffer;          /**< buffer presented to display */
     uint64_t drawColor;
-    int32_t vsync_callback_id;
     uint8_t vsync; /* 0 (Disabled), 1 (Enabled), 2 (Dynamic) */
+    SDL_bool vblank_not_reached; /**< whether vblank wasn't reached */
 } PSP_RenderData;
 
 typedef struct PSP_Texture
@@ -96,6 +96,12 @@ int SDL_PSP_RenderGetProp(SDL_Renderer *r, enum SDL_PSP_RenderProps which, void*
 static int vsync_sema_id = 0;
 
 /* PRIVATE METHODS */
+static void psp_on_vblank(u32 sub, PSP_RenderData *data)
+{
+    if (data) {
+        data->vblank_not_reached = SDL_FALSE;
+    }
+}
 
 static unsigned int getMemorySize(unsigned int width, unsigned int height, unsigned int psm)
 {
@@ -122,7 +128,7 @@ static unsigned int getMemorySize(unsigned int width, unsigned int height, unsig
 	}
 }
 
-static int PixelFormatToPSPFMT(Uint32 format)
+static int pixelFormatToPSPFMT(Uint32 format)
 {
     switch (format) {
     case SDL_PIXELFORMAT_BGR565:
@@ -153,18 +159,13 @@ static int calculatePitchForTextureFormat(int width, int format)
 }
 
 /* Return next power of 2 */
-static int TextureNextPow2(unsigned int w)
+static int calculateNextPow2(int value)
 {
-    unsigned int n = 2;
-    if (w == 0) {
-        return 0;
+    int i = 1;
+    while (i < value) {
+        i <<= 1;
     }
-
-    while (w > n) {
-        n <<= 1;
-    }
-
-    return n;
+    return i;
 }
 
 static void PSP_WindowEvent(SDL_Renderer *renderer, const SDL_WindowEvent *event)
@@ -179,11 +180,11 @@ static int PSP_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture)
         return SDL_OutOfMemory();
     }
 
-    psp_tex->format = PixelFormatToPSPFMT(texture->format);
+    psp_tex->format = pixelFormatToPSPFMT(texture->format);
     psp_tex->width = calculatePitchForTextureFormat(texture->w, psp_tex->format);
     psp_tex->height = texture->h;
-    psp_tex->textureWidth = TextureNextPow2(texture->w);
-    psp_tex->textureHeight = TextureNextPow2(texture->h);
+    psp_tex->textureWidth = calculateNextPow2(texture->w);
+    psp_tex->textureHeight = calculateNextPow2(texture->h);
     psp_tex->data = SDL_calloc(1, getMemorySize(psp_tex->width, psp_tex->height, psp_tex->format));
 
     if (!psp_tex->data) {
@@ -205,6 +206,7 @@ static int PSP_LockTexture(SDL_Renderer *renderer, SDL_Texture *texture,
         (void *)((Uint8 *)psp_texture->data + rect->y * psp_texture->width * SDL_BYTESPERPIXEL(texture->format) +
                  rect->x * SDL_BYTESPERPIXEL(texture->format));
     *pitch = psp_texture->width * SDL_BYTESPERPIXEL(texture->format);
+
     return 0;
 }
 
@@ -283,6 +285,7 @@ static int PSP_QueueDrawPoints(SDL_Renderer *renderer, SDL_RenderCommand *cmd, c
         verts->y = points->y;
         verts->z = 0.0f;
     }
+
     return 0;
 }
 
@@ -412,6 +415,7 @@ static int PSP_RenderSetDrawColor(SDL_Renderer *renderer, SDL_RenderCommand *cmd
     colorB = cmd->data.color.b;
     colorA = cmd->data.color.a;
     sceGuColor(GU_RGBA(colorR, colorG, colorB, colorA));
+
     return 0;
 }
 
@@ -508,7 +512,6 @@ int PSP_RenderLines(SDL_Renderer *renderer, void *vertices, SDL_RenderCommand *c
     PSP_SetBlendMode(data, cmd->data.draw.blend);
     sceGuDrawArray(GU_LINES, GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
 
-    /* We're done! */
     return 0;
 }
 
@@ -521,7 +524,6 @@ int PSP_RenderPoints(SDL_Renderer *renderer, void *vertices, SDL_RenderCommand *
     PSP_SetBlendMode(data, cmd->data.draw.blend);
     sceGuDrawArray(GU_POINTS, GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
 
-    /* We're done! */
     return 0;
 }
 
@@ -589,29 +591,16 @@ static int PSP_RenderPresent(SDL_Renderer *renderer)
 {
     PSP_RenderData *data = (PSP_RenderData *)renderer->driverdata;
 
-    // if (data->gsGlobal->DoubleBuffering == GS_SETTING_OFF) {
-    //     if (data->vsync == 2) { // Dynamic
-    //         gsKit_sync(data->gsGlobal);
-    //     } else if (data->vsync == 1) {
-    //         gsKit_vsync_wait();
-    //     }
-    //     gsKit_queue_exec(data->gsGlobal);
-    // } else {
-    //     gsKit_queue_exec(data->gsGlobal);
-    //     gsKit_finish();
-    //     if (data->vsync == 2) { // Dynamic
-    //         gsKit_sync(data->gsGlobal);
-    //     } else if (data->vsync == 1) {
-    //         gsKit_vsync_wait();
-    //     }
-    //     gsKit_flip(data->gsGlobal);
-    // }
-    // gsKit_TexManager_nextFrame(data->gsGlobal);
-    // gsKit_clear(data->gsGlobal, GS_BLACK);
+    if (((data->vsync == 2) && (data->vblank_not_reached)) || // Dynamic
+        (data->vsync == 1)) { // Normal VSync
+        sceDisplayWaitVblankStart();
+    }
+    data->vblank_not_reached = SDL_TRUE;
 
     sceGuFinish();
     sceGuSync(0,0);
-    sceGuSwapBuffers();
+    data->backbuffer = data->frontbuffer;
+    data->frontbuffer = vabsptr(sceGuSwapBuffers());
 
     // Starting a new frame
     sceGuStart(GU_DIRECT,list);
@@ -714,8 +703,14 @@ static SDL_Renderer *PSP_CreateRenderer(SDL_Window *window, Uint32 flags)
 	sceDisplayWaitVblankStart();
 	sceGuDisplay(GU_TRUE);
 
+    /* Improve performance when VSYC is enabled and it is not reaching the 60 FPS */
     dynamicVsync = SDL_GetHintBoolean(SDL_HINT_PSP_DYNAMIC_VSYNC, SDL_FALSE);
     data->vsync = flags & SDL_RENDERER_PRESENTVSYNC ? (dynamicVsync ? 2 : 1) : 0;
+    if (data->vsync == 2) {
+        sceKernelRegisterSubIntrHandler(PSP_VBLANK_INT, 0, psp_on_vblank, data);
+        sceKernelEnableSubIntr(PSP_VBLANK_INT, 0);
+    }
+    data->vblank_not_reached = SDL_TRUE;
 
     renderer->WindowEvent = PSP_WindowEvent;
     renderer->CreateTexture = PSP_CreateTexture;
