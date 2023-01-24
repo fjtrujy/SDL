@@ -2737,9 +2737,9 @@ elseif(PSP)
       pspvram
       pspaudio
       pspvfpu
+      pspdisplay
       pspgu
       pspge
-      pspdisplay
       psphprm
       pspctrl
       psppower
