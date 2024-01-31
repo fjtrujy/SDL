@@ -95,6 +95,7 @@ typedef struct
     PSP_BlendState blendState;            /**< current blend mode */
     PSP_TextureData *most_recent_target;  /**< start of render target LRU double linked list */
     PSP_TextureData *least_recent_target; /**< end of the LRU list */
+    SDL_Rect *viewport;                   /**< current viewport */
 
     SDL_bool vblank_not_reached; /**< whether vblank wasn't reached */
 } PSP_RenderData;
@@ -621,6 +622,19 @@ static int PSP_SetRenderTarget(SDL_Renderer *renderer, SDL_Texture *texture)
 
 static int PSP_QueueSetViewport(SDL_Renderer *renderer, SDL_RenderCommand *cmd)
 {
+    PSP_RenderData *data = (PSP_RenderData *)renderer->driverdata;
+    const SDL_Rect *viewport = &cmd->data.viewport.rect;
+    data->viewport = (SDL_Rect *)viewport;
+
+    sceGuOffset(2048 - viewport->x, 2048 - viewport->y);
+    sceGuViewport(2048 - viewport->x, 2048 - viewport->y, viewport->w, viewport->h);
+    sceGuScissor(viewport->x, viewport->y, viewport->w, viewport->h);
+
+    return 0;
+}
+
+static int PSP_QueueSetDrawColor(SDL_Renderer *renderer, SDL_RenderCommand *cmd)
+{
     return 0; /* nothing to do in this backend. */
 }
 
@@ -1059,27 +1073,28 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
 
         case SDL_RENDERCMD_SETVIEWPORT:
         {
-            SDL_Rect *viewport = &cmd->data.viewport.rect;
-            sceGuOffset(2048 - (viewport->w >> 1), 2048 - (viewport->h >> 1));
-            sceGuViewport(2048, 2048, viewport->w, viewport->h);
-            sceGuScissor(viewport->x, viewport->y, viewport->w, viewport->h);
+            /* nothing to do here, handled in PSP_QueueSetViewport */
             break;
         }
 
         case SDL_RENDERCMD_SETCLIPRECT:
         {
             const SDL_Rect *rect = &cmd->data.cliprect.rect;
+            SDL_Rect *viewport = data->viewport;
             if (cmd->data.cliprect.enabled) {
-                sceGuEnable(GU_SCISSOR_TEST);
-                sceGuScissor(rect->x, rect->y, rect->w, rect->h);
-            } else {
-                sceGuDisable(GU_SCISSOR_TEST);
+                /* We need to do it relative to saved viewport */
+                viewport->x += rect->x;
+                viewport->y += rect->y;
+                viewport->w = SDL_min(viewport->w, rect->w);
+                viewport->h = SDL_min(viewport->h, rect->h);
             }
+            sceGuScissor(viewport->x, viewport->y, viewport->w, viewport->h);
             break;
         }
 
         case SDL_RENDERCMD_CLEAR:
         {
+            sceGuDisable(GU_SCISSOR_TEST);
             const Uint8 r = (Uint8)(cmd->data.color.color.r * 255.0f);
             const Uint8 g = (Uint8)(cmd->data.color.color.g * 255.0f);
             const Uint8 b = (Uint8)(cmd->data.color.color.b * 255.0f);
@@ -1087,6 +1102,7 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
             sceGuClearColor(GU_RGBA(r, g, b, a));
             sceGuClearStencil(a);
             sceGuClear(GU_COLOR_BUFFER_BIT | GU_STENCIL_BUFFER_BIT);
+            sceGuEnable(GU_SCISSOR_TEST);
             break;
         }
 
@@ -1327,7 +1343,7 @@ SDL_Renderer *PSP_CreateRenderer(SDL_Window *window, SDL_PropertiesID create_pro
     renderer->SetTextureScaleMode = PSP_SetTextureScaleMode;
     renderer->SetRenderTarget = PSP_SetRenderTarget;
     renderer->QueueSetViewport = PSP_QueueSetViewport;
-    renderer->QueueSetDrawColor = PSP_QueueSetViewport; /* SetViewport and SetDrawColor are (currently) no-ops. */
+    renderer->QueueSetDrawColor = PSP_QueueSetDrawColor;
     renderer->QueueDrawPoints = PSP_QueueDrawPoints;
     renderer->QueueDrawLines = PSP_QueueDrawPoints; /* lines and points queue vertices the same way. */
     renderer->QueueGeometry = PSP_QueueGeometry;
