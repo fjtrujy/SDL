@@ -34,7 +34,6 @@
 #include <vram.h>
 
 #define GPU_LIST_SIZE 256 * 1024
-#define GPU_LIST_COUNT 3
 
 typedef struct
 {
@@ -44,14 +43,13 @@ typedef struct
 
 typedef struct
 {
-    uint32_t __attribute__((aligned(16))) guList[GPU_LIST_COUNT][GPU_LIST_SIZE];
+    uint32_t __attribute__((aligned(16))) guList[GPU_LIST_SIZE];
     void *frontbuffer;               /**< main screen buffer */
     void *backbuffer;                /**< buffer presented to display */
     PSP_BlendInfo blendInfo;         /**< current blend info */
     uint8_t drawBufferFormat;        /**< GU_PSM_8888 or GU_PSM_5650 or GU_PSM_4444 */
     uint8_t currentDrawBufferFormat; /**< GU_PSM_8888 or GU_PSM_5650 or GU_PSM_4444 */
     uint8_t vsync;                   /* 0 (Disabled), 1 (Enabled), 2 (Dynamic) */
-    uint8_t list_idx;
     SDL_bool vblank_not_reached; /**< whether vblank wasn't reached */
 } PSP_RenderData;
 
@@ -59,7 +57,6 @@ typedef struct
 {
     void *data;              /**< Image data. */
     void *swizzledData;      /**< Swizzled image data. */
-    uint32_t semaphore;      /**< Semaphore for the texture. */
     uint32_t textureWidth;   /**< Texture width (power of two). */
     uint32_t textureHeight;  /**< Texture height (power of two). */
     uint32_t width;          /**< Image width. */
@@ -128,58 +125,6 @@ static void psp_on_vblank(u32 sub, PSP_RenderData *data)
 {
     if (data) {
         data->vblank_not_reached = SDL_FALSE;
-    }
-}
-
-// This is a trick to be able of getting the semaphore ID from the signal callback
-// From the value received on the signal callback, we can just use the lower 16 bits
-// So in order to get the semaphore ID (which is 32 bits), we have done this trick.
-// Where on the sceGuSignalSemaphore we send 2 consecutive signals, one with the high 16 bits
-// and the other with the low 16 bits.
-// Then on the psp_on_signal we identify if we are reading the high or the low 16 bits 
-// by using the psp_on_signal_read_high variable. 
-// So we can get the semaphore ID by combining the high and low 16 bits.
-static uint8_t psp_on_signal_read_high = 0;
-static uint16_t psp_on_signal_high = 0;
-static void psp_on_signal(int id)
-{   
-    uint16_t value = id & 0xFFFF;
-    if (psp_on_signal_read_high) {
-        uint32_t semaphore = (psp_on_signal_high << 16) | value;
-        sceKernelSignalSema(semaphore, 1);
-        psp_on_signal_read_high = 0;
-    } else {
-        psp_on_signal_high = value;
-        psp_on_signal_read_high = 1;
-    }
-}
-
-static inline void sceGuSignalSemaphore(uint32_t semaphore)
-{
-    sceGuSignal(GU_SIGNAL_NOWAIT, (semaphore >> 16) & 0xFFFF);
-    sceGuSignal(GU_SIGNAL_NOWAIT, (semaphore & 0xFFFF));
-}
-
-static inline uint32_t createSemaphore(SDL_Texture *texture)
-{
-    uint32_t semaphore;
-    char semaphoreName[31];
-    snprintf(semaphoreName, sizeof(semaphoreName), "PSP_Tex_Sem_%p", texture);
-    semaphore = sceKernelCreateSema(semaphoreName, 0, 1, 1, NULL);
-    if (semaphore < 0) {
-        SDL_SetError("Failed to create texture semaphore");
-        return -1;
-    }
-    return semaphore;
-}
-
-static inline void destroySemaphore(uint32_t semaphore)
-{
-    if (semaphore != -1) {
-        // Wait for all threads to finish using the semaphore
-        sceKernelWaitSema(semaphore, 1, NULL);
-        sceKernelDeleteSema(semaphore);
-        semaphore = -1;
     }
 }
 
@@ -424,12 +369,12 @@ static inline int unswizzle(PSP_Texture *psp_tex)
 static inline void prepareTextureForUpload(SDL_Texture *texture)
 {
     PSP_Texture *psp_tex = (PSP_Texture *)texture->driverdata;
+    sceKernelDcacheWritebackRange(psp_tex->data, psp_tex->size);
     if (texture->access != SDL_TEXTUREACCESS_STATIC || psp_tex->swizzled)
         return;
 
     psp_tex->swizzledData = vramalloc(psp_tex->swizzledSize);
     if (!psp_tex->swizzledData) {
-        sceKernelDcacheWritebackRange(psp_tex->data, psp_tex->size);
         return;
     }
 
@@ -458,6 +403,14 @@ static inline void prepareTextureForDownload(SDL_Texture *texture)
     psp_tex->swizzled = GU_FALSE;
 
     sceKernelDcacheInvalidateRange(psp_tex->data, psp_tex->size);
+}
+
+static inline void finishAndSyncGPUList(PSP_RenderData *data)
+{
+    int g_packet_size = sceGuFinish();
+    SDL_assert(g_packet_size < GPU_LIST_SIZE);
+    sceKernelDcacheWritebackRange(data->guList, g_packet_size);
+    sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
 }
 
 static inline void PSP_SetBlendMode(PSP_RenderData *data, PSP_BlendInfo blendInfo)
@@ -515,10 +468,6 @@ static int PSP_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture)
         return SDL_OutOfMemory();
     }
 
-    psp_tex->semaphore = createSemaphore(texture);
-    if (psp_tex->semaphore == -1) {
-        return SDL_OutOfMemory();
-    }
     psp_tex->format = pixelFormatToPSPFMT(texture->format);
     psp_tex->textureWidth = calculateNextPow2(texture->w);
     psp_tex->textureHeight = calculateNextPow2(texture->h);
@@ -534,14 +483,12 @@ static int PSP_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture)
     if (texture->access != SDL_TEXTUREACCESS_STATIC) {
         psp_tex->data = vramalloc(psp_tex->size);
         if (!psp_tex->data) {
-            destroySemaphore(psp_tex->semaphore);
-            vfree(psp_tex);
+            SDL_free(psp_tex);
             return SDL_OutOfMemory();
         }
     } else {
         psp_tex->data = SDL_calloc(1, psp_tex->size);
         if (!psp_tex->data) {
-            destroySemaphore(psp_tex->semaphore);
             SDL_free(psp_tex);
             return SDL_OutOfMemory();
         }
@@ -561,7 +508,6 @@ static int PSP_LockTexture(SDL_Renderer *renderer, SDL_Texture *texture,
     // How a pointer to the texture data is returned it need to be unswizzled before it can be used
     prepareTextureForDownload(texture);
 
-    sceKernelWaitSema(psp_tex->semaphore, 1, NULL);
     *pixels =
         (void *)((Uint8 *)psp_tex->data + rect->y * psp_tex->pitch +
                  rect->x * SDL_BYTESPERPIXEL(texture->format));
@@ -575,7 +521,6 @@ static void PSP_UnlockTexture(SDL_Renderer *renderer, SDL_Texture *texture)
     PSP_Texture *psp_tex = (PSP_Texture *)texture->driverdata;
 
     sceKernelDcacheWritebackRange(psp_tex->data, psp_tex->size);
-    sceKernelSignalSema(psp_tex->semaphore, 1);
 }
 
 static int PSP_UpdateTexture(SDL_Renderer *renderer, SDL_Texture *texture,
@@ -624,7 +569,6 @@ static int PSP_SetRenderTarget(SDL_Renderer *renderer, SDL_Texture *texture)
 
     if (texture) {
         PSP_Texture *psp_tex = (PSP_Texture *)texture->driverdata;
-        sceKernelWaitSema(psp_tex->semaphore, 1, NULL);
         sceGuDrawBufferList(psp_tex->format, vrelptr(psp_tex->data), psp_tex->width);
         data->currentDrawBufferFormat = psp_tex->format;
 
@@ -642,10 +586,8 @@ static int PSP_SetRenderTarget(SDL_Renderer *renderer, SDL_Texture *texture)
         // Enable scissor to avoid drawing outside viewport
         sceGuEnable(GU_SCISSOR_TEST);
         sceGuScissor(0, 0, psp_tex->width, psp_tex->height);
-
-        sceGuSignalSemaphore(psp_tex->semaphore);
     } else {
-        sceGuDrawBufferList(data->drawBufferFormat, vrelptr(data->backbuffer), PSP_FRAME_BUFFER_WIDTH);
+        sceGuDrawBufferList(data->drawBufferFormat, vrelptr(data->frontbuffer), PSP_FRAME_BUFFER_WIDTH);
         data->currentDrawBufferFormat = data->drawBufferFormat;
     }
 
@@ -895,14 +837,12 @@ static inline int PSP_RenderGeometry(SDL_Renderer *renderer, void *vertices, SDL
         tbw = psp_tex->swizzled ? psp_tex->swizzledWidth : psp_tex->width;
         twp = psp_tex->swizzled ? psp_tex->swizzledData : psp_tex->data;
 
-        sceKernelWaitSema(psp_tex->semaphore, 1, NULL);
         sceGuTexMode(psp_tex->format, 0, 0, psp_tex->swizzled);
         sceGuTexImage(0, psp_tex->textureWidth, psp_tex->textureHeight, tbw, twp);
         sceGuTexFilter(psp_tex->filter, psp_tex->filter);
         sceGuEnable(GU_TEXTURE_2D);
         sceGuDrawArray(GU_TRIANGLES, GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
         sceGuDisable(GU_TEXTURE_2D);
-        sceGuSignalSemaphore(psp_tex->semaphore);
     } else {
         const VertCV *verts = (VertCV *)(vertices + cmd->data.draw.first);
         sceGuDrawArray(GU_TRIANGLES, GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
@@ -976,9 +916,6 @@ static inline int PSP_RenderCopy(SDL_Renderer *renderer, void *vertices, SDL_Ren
     PSP_SetBlendMode(data, blendInfo);
 
     prepareTextureForUpload(texture);
-    // We can't use sceKernelWaitSema here because several consecutive SDL_RenderCopy calls
-    // could be performed by the user.
-    sceKernelPollSema(psp_tex->semaphore, 1);
 
     tbw = psp_tex->swizzled ? psp_tex->textureWidth : psp_tex->width;
     twp = psp_tex->swizzled ? psp_tex->swizzledData : psp_tex->data;
@@ -989,32 +926,17 @@ static inline int PSP_RenderCopy(SDL_Renderer *renderer, void *vertices, SDL_Ren
     sceGuEnable(GU_TEXTURE_2D);
     sceGuDrawArray(GU_SPRITES, GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
     sceGuDisable(GU_TEXTURE_2D);
-    sceGuSignalSemaphore(psp_tex->semaphore);
 
     return 0;
 }
 
-static inline void PSP_SendQueueToGPU(SDL_Renderer *renderer) {
-    PSP_RenderData *data = (PSP_RenderData *)renderer->driverdata;
-
-    int g_packet_size = sceGuFinish();
-    void *pkt = data->guList[data->list_idx];
-    SDL_assert(g_packet_size < GPU_LIST_SIZE);
-    sceKernelDcacheWritebackRange(pkt, g_packet_size);
-
-    sceGuSync(GU_SYNC_SEND, GU_SYNC_WHAT_DONE);
-
-    // Send the packet to the GPU
-    sceGuSendList(GU_TAIL, data->guList[data->list_idx], NULL);
-
-    // Starting a new list
-    data->list_idx = (data->list_idx + 1) % GPU_LIST_COUNT;
-
-    sceGuStart(GU_SEND, data->guList[data->list_idx]);
-}
-
 static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, void *vertices, size_t vertsize)
 {
+    PSP_RenderData *data = (PSP_RenderData *)renderer->driverdata;
+    int g_packet_size;
+
+    sceGuStart(GU_DIRECT, data->guList);
+
     /* note that before the renderer interface change, this would do extrememly small
        batches with sceGuGetMemory()--a few vertices at a time--and it's not clear that
        this won't fail if you try to push 100,000 draw calls in a single batch.
@@ -1023,6 +945,7 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
        if we appear to be exceeding that. */
     Uint8 *gpumem = (Uint8 *)sceGuGetMemory(vertsize);
     if (gpumem == NULL) {
+        finishAndSyncGPUList(data);
         return SDL_SetError("Couldn't obtain a %d-byte vertex buffer!", (int)vertsize);
     }
     SDL_memcpy(gpumem, vertices, vertsize);
@@ -1082,7 +1005,7 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
         cmd = cmd->next;
     }
 
-    PSP_SendQueueToGPU(renderer);
+    finishAndSyncGPUList(data);
 
     return 0;
 }
@@ -1106,8 +1029,6 @@ static int PSP_RenderPresent(SDL_Renderer *renderer)
     data->backbuffer = data->frontbuffer;
     data->frontbuffer = vabsptr(sceGuSwapBuffers());
 
-    sceGuDrawBufferList(data->drawBufferFormat, vrelptr(data->backbuffer), PSP_FRAME_BUFFER_WIDTH);
-
     return 0;
 }
 
@@ -1123,8 +1044,6 @@ static void PSP_DestroyTexture(SDL_Renderer *renderer, SDL_Texture *texture)
     if (!psp_tex) {
         return;
     }
-
-    destroySemaphore(psp_tex->semaphore);
 
     if (psp_tex->swizzledData) {
         vfree(psp_tex->swizzledData);
@@ -1166,6 +1085,7 @@ static int PSP_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, Uint32
 {
     PSP_RenderData *data;
     uint32_t bufferSize = 0;
+    int32_t g_packet_size;
     SDL_bool dynamicVsync;
 
     data = (PSP_RenderData *)SDL_calloc(1, sizeof(*data));
@@ -1178,7 +1098,6 @@ static int PSP_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, Uint32
     sceKernelDcacheWritebackAll();
 
     data->drawBufferFormat = pixelFormatToPSPFMT(SDL_GetWindowPixelFormat(window));
-    ;
     data->currentDrawBufferFormat = data->drawBufferFormat;
 
     /* Specific GU init */
@@ -1187,7 +1106,7 @@ static int PSP_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, Uint32
     data->backbuffer = vramalloc(bufferSize);
 
     sceGuInit();
-    sceGuStart(GU_DIRECT, data->guList[0]);
+    sceGuStart(GU_DIRECT, data->guList);
     sceGuDrawBuffer(data->drawBufferFormat, vrelptr(data->frontbuffer), PSP_FRAME_BUFFER_WIDTH);
     sceGuDispBuffer(PSP_SCREEN_WIDTH, PSP_SCREEN_HEIGHT, vrelptr(data->backbuffer), PSP_FRAME_BUFFER_WIDTH);
 
@@ -1199,21 +1118,12 @@ static int PSP_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, Uint32
     sceGuScissor(0, 0, PSP_SCREEN_WIDTH, PSP_SCREEN_HEIGHT);
     sceGuEnable(GU_SCISSOR_TEST);
 
-    sceGuFinish();
+    g_packet_size = sceGuFinish();
+    sceKernelDcacheWritebackRange(data->guList, g_packet_size);
     sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
 
     sceDisplayWaitVblankStart();
     sceGuDisplay(GU_TRUE);
-
-    // Starting the first frame
-    data->list_idx = 0;
-
-    sceGuStart(GU_SEND, data->guList[data->list_idx]);
-    sceGuDrawBufferList(data->drawBufferFormat, vrelptr(data->backbuffer), PSP_FRAME_BUFFER_WIDTH);
-
-    // Clear the screen
-    sceGuClearColor(0);
-    sceGuClear(GU_COLOR_BUFFER_BIT);
 
     /* Improve performance when VSYC is enabled and it is not reaching the 60 FPS */
     dynamicVsync = SDL_GetHintBoolean(SDL_HINT_PSP_DYNAMIC_VSYNC, SDL_FALSE);
@@ -1223,9 +1133,6 @@ static int PSP_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, Uint32
         sceKernelEnableSubIntr(PSP_VBLANK_INT, 0);
     }
     data->vblank_not_reached = SDL_TRUE;
-
-    // Set the callback for the texture semaphores
-    sceGuSetCallback(GU_CALLBACK_SIGNAL, psp_on_signal);
 
     renderer->WindowEvent = PSP_WindowEvent;
     renderer->CreateTexture = PSP_CreateTexture;
