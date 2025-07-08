@@ -413,13 +413,12 @@ static inline void finishAndSyncGPUList(PSP_RenderData *data)
     sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
 }
 
-static inline void PSP_SetBlendMode(PSP_RenderData *data, PSP_BlendInfo blendInfo)
+static inline void setBlendMode(PSP_RenderData *data, PSP_BlendInfo blendInfo)
 {
     // Update the blend mode if necessary
     if (data->blendInfo.mode != blendInfo.mode) {
         switch (blendInfo.mode) {
         case SDL_BLENDMODE_NONE:
-            sceGuShadeModel(GU_SMOOTH);
             sceGuTexFunc(GU_TFX_REPLACE, GU_TCC_RGBA);
             sceGuDisable(GU_BLEND);
             break;
@@ -567,6 +566,7 @@ static int PSP_SetRenderTarget(SDL_Renderer *renderer, SDL_Texture *texture)
 {
     PSP_RenderData *data = (PSP_RenderData *)renderer->driverdata;
 
+    sceGuStart(GU_DIRECT, data->guList);
     if (texture) {
         PSP_Texture *psp_tex = (PSP_Texture *)texture->driverdata;
         sceGuDrawBufferList(psp_tex->format, vrelptr(psp_tex->data), psp_tex->width);
@@ -590,6 +590,7 @@ static int PSP_SetRenderTarget(SDL_Renderer *renderer, SDL_Texture *texture)
         sceGuDrawBufferList(data->drawBufferFormat, vrelptr(data->frontbuffer), PSP_FRAME_BUFFER_WIDTH);
         data->currentDrawBufferFormat = data->drawBufferFormat;
     }
+    finishAndSyncGPUList(data);
 
     return 0;
 }
@@ -823,7 +824,7 @@ static inline int PSP_RenderGeometry(SDL_Renderer *renderer, void *vertices, SDL
         .shade = GU_SMOOTH
     };
 
-    PSP_SetBlendMode(data, blendInfo);
+    setBlendMode(data, blendInfo);
 
     if (texture) {
         uint32_t tbw;
@@ -861,7 +862,7 @@ static inline int PSP_RenderLines(SDL_Renderer *renderer, void *vertices, SDL_Re
         .shade = GU_FLAT
     };
 
-    PSP_SetBlendMode(data, blendInfo);
+    setBlendMode(data, blendInfo);
     sceGuDrawArray(GU_LINES, GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
 
     return 0;
@@ -877,7 +878,7 @@ static inline int PSP_RenderFillRects(SDL_Renderer *renderer, void *vertices, SD
         .shade = GU_FLAT
     };
 
-    PSP_SetBlendMode(data, blendInfo);
+    setBlendMode(data, blendInfo);
     sceGuDrawArray(GU_SPRITES, GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
 
     return 0;
@@ -893,7 +894,7 @@ static inline int PSP_RenderPoints(SDL_Renderer *renderer, void *vertices, SDL_R
         .shade = GU_FLAT
     };
 
-    PSP_SetBlendMode(data, blendInfo);
+    setBlendMode(data, blendInfo);
     sceGuDrawArray(GU_POINTS, GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
 
     return 0;
@@ -913,7 +914,7 @@ static inline int PSP_RenderCopy(SDL_Renderer *renderer, void *vertices, SDL_Ren
         .shade = GU_FLAT
     };
 
-    PSP_SetBlendMode(data, blendInfo);
+    setBlendMode(data, blendInfo);
 
     prepareTextureForUpload(texture);
 
