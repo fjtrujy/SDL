@@ -935,6 +935,7 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
     PSP_RenderData *data = (PSP_RenderData *)renderer->driverdata;
     int g_packet_size;
 
+    sceKernelDcacheWritebackRange(data->guList, sizeof(data->guList));
     sceGuStart(GU_DIRECT, data->guList);
 
     /* note that before the renderer interface change, this would do extrememly small
@@ -949,6 +950,7 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
         return SDL_SetError("Couldn't obtain a %d-byte vertex buffer!", (int)vertsize);
     }
     SDL_memcpy(gpumem, vertices, vertsize);
+    sceKernelDcacheWritebackRange(gpumem, vertsize);
 
     while (cmd) {
         switch (cmd->command) {
