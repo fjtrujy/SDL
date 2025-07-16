@@ -715,7 +715,6 @@ static int PSP_QueueFillRects(SDL_Renderer *renderer, SDL_RenderCommand *cmd, co
         return -1;
     }
 
-    cmd->data.draw.count = count;
     for (i = 0; i < count; i++, rects++) {
         verts->x = rects->x;
         verts->y = rects->y;
@@ -863,7 +862,7 @@ static inline int PSP_RenderLines(SDL_Renderer *renderer, void *vertices, SDL_Re
     };
 
     setBlendMode(data, blendInfo);
-    sceGuDrawArray(GU_LINES, GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
+    sceGuDrawArray(count > 2 ? GU_LINES : GU_LINE_STRIP, GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
 
     return 0;
 }
