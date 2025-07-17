@@ -410,7 +410,6 @@ static inline void finishAndSyncGPUList(PSP_RenderData *data)
 {
     int g_packet_size = sceGuFinish();
     SDL_assert(g_packet_size < GPU_LIST_SIZE);
-    sceKernelDcacheWritebackRange(data->guList, g_packet_size);
     sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
 }
 
