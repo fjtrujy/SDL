@@ -908,22 +908,6 @@ static inline int PSP_RenderGeometry(SDL_Renderer *renderer, void *vertices, SDL
     return 0;
 }
 
-static inline int PSP_RenderFillRects(SDL_Renderer *renderer, void *vertices, SDL_RenderCommand *cmd)
-{
-    PSP_RenderData *data = (PSP_RenderData *)renderer->driverdata;
-    const size_t count = cmd->data.draw.count;
-    const VertV *verts = (VertV *)(vertices + cmd->data.draw.first);
-    const PSP_BlendInfo blendInfo = {
-        .mode = cmd->data.draw.blend,
-        .shade = GU_FLAT
-    };
-
-    setBlendMode(data, blendInfo);
-    sceGuDrawArray(GU_SPRITES, GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
-
-    return 0;
-}
-
 static inline int PSP_RenderCopy(SDL_Renderer *renderer, void *vertices, SDL_RenderCommand *cmd)
 {
     uint32_t tbw;
@@ -958,7 +942,6 @@ static inline int PSP_RenderCopy(SDL_Renderer *renderer, void *vertices, SDL_Ren
 static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, void *vertices, size_t vertsize)
 {
     PSP_RenderData *data = (PSP_RenderData *)renderer->driverdata;
-    int g_packet_size;
 
     sceKernelDcacheWritebackRange(data->guList, sizeof(data->guList));
     sceKernelDcacheWritebackRange(vertices, vertsize);
@@ -1056,7 +1039,34 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
         }
         case SDL_RENDERCMD_FILL_RECTS:
         {
-            PSP_RenderFillRects(renderer, vertices, cmd);
+            SDL_RenderCommand *finalcmd = cmd;
+            SDL_RenderCommand *nextcmd = cmd->next;
+            size_t count = cmd->data.draw.count;
+            const VertV *verts = (VertV *)(vertices + cmd->data.draw.first);
+            const PSP_BlendInfo blendInfo = {
+                .mode = cmd->data.draw.blend,
+                .shade = GU_FLAT
+            };
+            void *expectedNextVerts = (void *)((uintptr_t)verts + count * sizeof(VertV));
+
+            while (nextcmd) {
+                const SDL_RenderCommandType nextcmdtype = nextcmd->command;
+                const size_t nextcount = nextcmd->data.draw.count;
+                if (nextcmdtype != SDL_RENDERCMD_FILL_RECTS || 
+                    (vertices + nextcmd->data.draw.first) != expectedNextVerts || 
+                    (count + nextcount) > MAX_VERTICES) {
+                    break; /* can't go any further on this draw call */
+                }
+                expectedNextVerts = (void *)((uintptr_t)expectedNextVerts + nextcount * sizeof(VertV));
+                count += nextcount;
+                finalcmd = nextcmd;
+                nextcmd = nextcmd->next;
+            }
+
+            setBlendMode(data, blendInfo);
+            sceGuDrawArray(GU_SPRITES, GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
+            cmd = finalcmd;
+
             break;
         }
         case SDL_RENDERCMD_COPY:
