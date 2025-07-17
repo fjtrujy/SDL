@@ -993,21 +993,8 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
     int g_packet_size;
 
     sceKernelDcacheWritebackRange(data->guList, sizeof(data->guList));
+    sceKernelDcacheWritebackRange(vertices, vertsize);
     sceGuStart(GU_DIRECT, data->guList);
-
-    /* note that before the renderer interface change, this would do extrememly small
-       batches with sceGuGetMemory()--a few vertices at a time--and it's not clear that
-       this won't fail if you try to push 100,000 draw calls in a single batch.
-       I don't know what the limits on PSP hardware are. It might be useful to have
-       rendering backends report a reasonable maximum, so the higher level can flush
-       if we appear to be exceeding that. */
-    Uint8 *gpumem = (Uint8 *)sceGuGetMemory(vertsize);
-    if (gpumem == NULL) {
-        finishAndSyncGPUList(data);
-        return SDL_SetError("Couldn't obtain a %d-byte vertex buffer!", (int)vertsize);
-    }
-    SDL_memcpy(gpumem, vertices, vertsize);
-    sceKernelDcacheWritebackRange(gpumem, vertsize);
 
     while (cmd) {
         switch (cmd->command) {
@@ -1033,29 +1020,29 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
         }
         case SDL_RENDERCMD_DRAW_POINTS:
         {
-            PSP_RenderPoints(renderer, gpumem, cmd);
+            PSP_RenderPoints(renderer, vertices, cmd);
             break;
         }
         case SDL_RENDERCMD_DRAW_LINES:
         {
-            PSP_RenderLines(renderer, gpumem, cmd);
+            PSP_RenderLines(renderer, vertices, cmd);
             break;
         }
         case SDL_RENDERCMD_FILL_RECTS:
         {
-            PSP_RenderFillRects(renderer, gpumem, cmd);
+            PSP_RenderFillRects(renderer, vertices, cmd);
             break;
         }
         case SDL_RENDERCMD_COPY:
         {
-            PSP_RenderCopy(renderer, gpumem, cmd);
+            PSP_RenderCopy(renderer, vertices, cmd);
             break;
         }
         case SDL_RENDERCMD_COPY_EX: /* unused */
             break;
         case SDL_RENDERCMD_GEOMETRY:
         {
-            PSP_RenderGeometry(renderer, gpumem, cmd);
+            PSP_RenderGeometry(renderer, vertices, cmd);
             break;
         }
         case SDL_RENDERCMD_NO_OP:
