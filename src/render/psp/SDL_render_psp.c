@@ -509,8 +509,6 @@ static void PSP_WindowEvent(SDL_Renderer *renderer, const SDL_WindowEvent *event
 
 static SDL_bool PSP_SupportsBlendMode(SDL_Renderer *renderer, SDL_BlendMode blendMode)
 {
-    PSP_RenderData *data = (PSP_RenderData *)renderer->driverdata;
-
     SDL_BlendFactor srcColorFactor = SDL_GetBlendModeSrcColorFactor(blendMode);
     SDL_BlendFactor srcAlphaFactor = SDL_GetBlendModeSrcAlphaFactor(blendMode);
     SDL_BlendOperation colorOperation = SDL_GetBlendModeColorOperation(blendMode);
@@ -870,44 +868,6 @@ static inline int PSP_RenderClear(SDL_Renderer *renderer, SDL_RenderCommand *cmd
     return 0;
 }
 
-static inline int PSP_RenderGeometry(SDL_Renderer *renderer, void *vertices, SDL_RenderCommand *cmd)
-{
-    PSP_RenderData *data = (PSP_RenderData *)renderer->driverdata;
-    SDL_Texture *texture = cmd->data.draw.texture;
-    const size_t count = cmd->data.draw.count;
-    PSP_BlendInfo blendInfo = {
-        .mode = cmd->data.draw.blend,
-        .shade = GU_SMOOTH
-    };
-
-    setBlendMode(data, blendInfo);
-
-    if (texture) {
-        uint32_t tbw;
-        void *twp;
-        const VertTCV *verts = (VertTCV *)(vertices + cmd->data.draw.first);
-
-        PSP_Texture *psp_tex = (PSP_Texture *)texture->driverdata;
-
-        prepareTextureForUpload(texture);
-
-        tbw = psp_tex->swizzled ? psp_tex->swizzledWidth : psp_tex->width;
-        twp = psp_tex->swizzled ? psp_tex->swizzledData : psp_tex->data;
-
-        sceGuTexMode(psp_tex->format, 0, 0, psp_tex->swizzled);
-        sceGuTexImage(0, psp_tex->textureWidth, psp_tex->textureHeight, tbw, twp);
-        sceGuTexFilter(psp_tex->filter, psp_tex->filter);
-        sceGuEnable(GU_TEXTURE_2D);
-        sceGuDrawArray(GU_TRIANGLES, GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
-        sceGuDisable(GU_TEXTURE_2D);
-    } else {
-        const VertCV *verts = (VertCV *)(vertices + cmd->data.draw.first);
-        sceGuDrawArray(GU_TRIANGLES, GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
-    }
-
-    return 0;
-}
-
 static inline int PSP_RenderCopy(SDL_Renderer *renderer, void *vertices, SDL_RenderCommand *cmd)
 {
     uint32_t tbw;
@@ -1078,7 +1038,59 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
             break;
         case SDL_RENDERCMD_GEOMETRY:
         {
-            PSP_RenderGeometry(renderer, vertices, cmd);
+            SDL_Texture *texture = cmd->data.draw.texture;
+            SDL_RenderCommand *finalcmd = cmd;
+            SDL_RenderCommand *nextcmd = cmd->next;
+            const void *verts = (void *)(vertices + cmd->data.draw.first);
+            size_t count = cmd->data.draw.count;
+            const PSP_BlendInfo blendInfo = {
+                .mode = cmd->data.draw.blend,
+                .shade = GU_SMOOTH
+            };
+
+            const size_t structSize = cmd->data.draw.texture != NULL ? sizeof(VertTCV) : sizeof(VertCV);
+            void *expectedNextVerts = (void *)((uintptr_t)verts + count * structSize);
+
+            while (nextcmd) {
+                const SDL_Texture *nexttexture = nextcmd->data.draw.texture;
+                const SDL_RenderCommandType nextcmdtype = nextcmd->command;
+                const size_t nextcount = nextcmd->data.draw.count;
+                
+                if (nextcmdtype != SDL_RENDERCMD_GEOMETRY || 
+                    texture != nexttexture ||
+                    (vertices + nextcmd->data.draw.first) != expectedNextVerts || 
+                    (count + nextcount) > MAX_VERTICES) {
+                    break; /* can't go any further on this draw call */
+                }
+                
+                expectedNextVerts = (void *)((uintptr_t)expectedNextVerts + nextcount * structSize);
+                count += nextcount;
+                finalcmd = nextcmd;
+                nextcmd = nextcmd->next;
+            }
+
+            setBlendMode(data, blendInfo);
+            if (texture != NULL) {
+                uint32_t tbw;
+                void *twp;
+                PSP_Texture *psp_tex = (PSP_Texture *)texture->driverdata;
+
+                prepareTextureForUpload(texture);
+
+                tbw = psp_tex->swizzled ? psp_tex->swizzledWidth : psp_tex->width;
+                twp = psp_tex->swizzled ? psp_tex->swizzledData : psp_tex->data;
+
+                sceGuTexMode(psp_tex->format, 0, 0, psp_tex->swizzled);
+                sceGuTexImage(0, psp_tex->textureWidth, psp_tex->textureHeight, tbw, twp);
+                sceGuTexFilter(psp_tex->filter, psp_tex->filter);
+                sceGuEnable(GU_TEXTURE_2D);
+                sceGuDrawArray(GU_TRIANGLES, GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
+                sceGuDisable(GU_TEXTURE_2D);
+            } else {
+                sceGuDrawArray(GU_TRIANGLES, GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
+            }
+            cmd = finalcmd;
+
             break;
         }
         case SDL_RENDERCMD_NO_OP:
