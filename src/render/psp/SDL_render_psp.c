@@ -34,7 +34,7 @@
 #include <psputils.h>
 #include <vram.h>
 
-#define GPU_LIST_SIZE 256 * 1024
+#define GPU_LIST_SIZE 32 * 1024
 
 typedef struct
 {
