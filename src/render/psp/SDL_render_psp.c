@@ -414,6 +414,53 @@ static inline void finishAndSyncGPUList(PSP_RenderData *data)
     sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
 }
 
+#define GU_INVALID_ENUM -1
+static int32_t GetBlendFunc(SDL_BlendFactor factor)
+{
+    switch (factor) {
+    case SDL_BLENDFACTOR_ZERO:
+        return GU_FIX;
+    case SDL_BLENDFACTOR_ONE:
+        return GU_FIX; /* GU_ONE not available, use GU_FIX with appropriate fix value */
+    case SDL_BLENDFACTOR_SRC_COLOR:
+        return GU_SRC_COLOR;
+    case SDL_BLENDFACTOR_ONE_MINUS_SRC_COLOR:
+        return GU_ONE_MINUS_SRC_COLOR;
+    case SDL_BLENDFACTOR_SRC_ALPHA:
+        return GU_SRC_ALPHA;
+    case SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA:
+        return GU_ONE_MINUS_SRC_ALPHA;
+    case SDL_BLENDFACTOR_DST_COLOR:
+        return GU_DST_COLOR;
+    case SDL_BLENDFACTOR_ONE_MINUS_DST_COLOR:
+        return GU_ONE_MINUS_DST_COLOR;
+    case SDL_BLENDFACTOR_DST_ALPHA:
+        return GU_DST_ALPHA;
+    case SDL_BLENDFACTOR_ONE_MINUS_DST_ALPHA:
+        return GU_ONE_MINUS_DST_ALPHA;
+    default:
+        return GU_INVALID_ENUM;
+    }
+}
+
+static int32_t GetBlendEquation(SDL_BlendOperation operation)
+{
+    switch (operation) {
+    case SDL_BLENDOPERATION_ADD:
+        return GU_ADD;
+    case SDL_BLENDOPERATION_SUBTRACT:
+        return GU_SUBTRACT;
+    case SDL_BLENDOPERATION_REV_SUBTRACT:
+        return GU_REVERSE_SUBTRACT;
+    case SDL_BLENDOPERATION_MINIMUM:
+        return GU_MIN;
+    case SDL_BLENDOPERATION_MAXIMUM:
+        return GU_MAX;
+    default:
+        return GU_INVALID_ENUM;
+    }
+}
+
 static inline void setBlendMode(PSP_RenderData *data, PSP_BlendInfo blendInfo)
 {
     // Update the blend mode if necessary
@@ -458,6 +505,29 @@ static inline void setBlendMode(PSP_RenderData *data, PSP_BlendInfo blendInfo)
 
 static void PSP_WindowEvent(SDL_Renderer *renderer, const SDL_WindowEvent *event)
 {
+}
+
+static SDL_bool PSP_SupportsBlendMode(SDL_Renderer *renderer, SDL_BlendMode blendMode)
+{
+    PSP_RenderData *data = (PSP_RenderData *)renderer->driverdata;
+
+    SDL_BlendFactor srcColorFactor = SDL_GetBlendModeSrcColorFactor(blendMode);
+    SDL_BlendFactor srcAlphaFactor = SDL_GetBlendModeSrcAlphaFactor(blendMode);
+    SDL_BlendOperation colorOperation = SDL_GetBlendModeColorOperation(blendMode);
+    SDL_BlendFactor dstColorFactor = SDL_GetBlendModeDstColorFactor(blendMode);
+    SDL_BlendFactor dstAlphaFactor = SDL_GetBlendModeDstAlphaFactor(blendMode);
+    SDL_BlendOperation alphaOperation = SDL_GetBlendModeAlphaOperation(blendMode);
+
+    if (GetBlendFunc(srcColorFactor) == GU_INVALID_ENUM ||
+        GetBlendFunc(srcAlphaFactor) == GU_INVALID_ENUM ||
+        GetBlendEquation(colorOperation) == GU_INVALID_ENUM ||
+        GetBlendFunc(dstColorFactor) == GU_INVALID_ENUM ||
+        GetBlendFunc(dstAlphaFactor) == GU_INVALID_ENUM ||
+        GetBlendEquation(alphaOperation) == GU_INVALID_ENUM) {
+        return SDL_FALSE;
+    }
+
+    return SDL_TRUE;
 }
 
 static int PSP_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture)
@@ -1124,6 +1194,7 @@ static int PSP_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, Uint32
     data->vblank_not_reached = SDL_TRUE;
 
     renderer->WindowEvent = PSP_WindowEvent;
+    renderer->SupportsBlendMode = PSP_SupportsBlendMode;
     renderer->CreateTexture = PSP_CreateTexture;
     renderer->UpdateTexture = PSP_UpdateTexture;
     renderer->LockTexture = PSP_LockTexture;
