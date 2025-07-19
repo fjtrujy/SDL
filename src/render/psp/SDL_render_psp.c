@@ -1220,6 +1220,8 @@ static int PSP_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, Uint32
     sceGuScissor(0, 0, PSP_SCREEN_WIDTH, PSP_SCREEN_HEIGHT);
     sceGuEnable(GU_SCISSOR_TEST);
 
+    sceGuDisable(GU_ALPHA_TEST);
+
     g_packet_size = sceGuFinish();
     sceKernelDcacheWritebackRange(data->guList, g_packet_size);
     sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
