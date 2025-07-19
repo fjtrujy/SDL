@@ -50,7 +50,6 @@ typedef struct
     void *backbuffer;                /**< buffer presented to display */
     PSP_BlendInfo blendInfo;         /**< current blend info */
     uint8_t drawBufferFormat;        /**< GU_PSM_8888 or GU_PSM_5650 or GU_PSM_4444 */
-    uint8_t currentDrawBufferFormat; /**< GU_PSM_8888 or GU_PSM_5650 or GU_PSM_4444 */
     uint8_t vsync;                   /* 0 (Disabled), 1 (Enabled), 2 (Dynamic) */
     SDL_bool vblank_not_reached; /**< whether vblank wasn't reached */
 } PSP_RenderData;
@@ -218,6 +217,18 @@ static inline int calculateNextPow2(int value)
     return i;
 }
 
+static inline uint8_t currentDrawBufferFormat(SDL_Renderer *renderer)
+{
+    PSP_RenderData *data = (PSP_RenderData *)renderer->driverdata;
+    if (renderer->target) {
+        SDL_Texture *texture = (SDL_Texture *)renderer->target;
+        PSP_Texture *psp_tex = (PSP_Texture *)texture->driverdata;
+        return psp_tex->format;
+    } else {
+        return data->drawBufferFormat;
+    }
+}
+
 static inline int calculateBestSliceSizeForSprite(SDL_Renderer *renderer, const SDL_FRect *dstrect, SliceSize *sliceSize, SliceSize *sliceDimension)
 {
     PSP_RenderData *data = (PSP_RenderData *)renderer->driverdata;
@@ -225,7 +236,7 @@ static inline int calculateBestSliceSizeForSprite(SDL_Renderer *renderer, const 
     // We split in blocks of (64 x destiny height) when 16 bits per color
     // or (32 x destiny height) when 32 bits per color
 
-    switch (data->currentDrawBufferFormat) {
+    switch (currentDrawBufferFormat(renderer)) {
     case GU_PSM_5650:
     case GU_PSM_5551:
     case GU_PSM_4444:
@@ -640,10 +651,8 @@ static int PSP_SetRenderTarget(SDL_Renderer *renderer, SDL_Texture *texture)
     if (texture) {
         PSP_Texture *psp_tex = (PSP_Texture *)texture->driverdata;
         sceGuDrawBuffer(psp_tex->format, vrelptr(psp_tex->data), psp_tex->width);
-        data->currentDrawBufferFormat = psp_tex->format;
     } else {
         sceGuDrawBuffer(data->drawBufferFormat, vrelptr(data->frontbuffer), PSP_FRAME_BUFFER_WIDTH);
-        data->currentDrawBufferFormat = data->drawBufferFormat;
     }
     finishAndSyncGPUList(data);
 
@@ -1192,7 +1201,6 @@ static int PSP_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, Uint32
     sceKernelDcacheWritebackAll();
 
     data->drawBufferFormat = pixelFormatToPSPFMT(SDL_GetWindowPixelFormat(window));
-    data->currentDrawBufferFormat = data->drawBufferFormat;
 
     /* Specific GU init */
     bufferSize = getMemorySize(PSP_FRAME_BUFFER_WIDTH, PSP_SCREEN_HEIGHT, data->drawBufferFormat);
