@@ -942,6 +942,7 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
         {
             SDL_RenderCommand *finalcmd = cmd;
             SDL_RenderCommand *nextcmd = cmd->next;
+            SDL_BlendMode thisblend = cmd->data.draw.blend;
             size_t count = cmd->data.draw.count;
             const VertV *verts = (VertV *)(vertices + cmd->data.draw.first);
             const PSP_BlendInfo blendInfo = {
@@ -953,9 +954,11 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
             while (nextcmd) {
                 const SDL_RenderCommandType nextcmdtype = nextcmd->command;
                 const size_t nextcount = nextcmd->data.draw.count;
+                const SDL_BlendMode nextblend = nextcmd->data.draw.blend;
                 if (nextcmdtype != SDL_RENDERCMD_DRAW_POINTS || 
                     (vertices + nextcmd->data.draw.first) != expectedNextVerts || 
-                    (count + nextcount) > MAX_VERTICES) {
+                    (count + nextcount) > MAX_VERTICES ||
+                    nextblend != thisblend) {
                     break; /* can't go any further on this draw call */
                 }
                 expectedNextVerts = (void *)((uintptr_t)expectedNextVerts + nextcount * sizeof(VertV));
@@ -974,6 +977,7 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
         {
             SDL_RenderCommand *finalcmd = cmd;
             SDL_RenderCommand *nextcmd = cmd->next;
+            SDL_BlendMode thisblend = cmd->data.draw.blend;
             size_t count = cmd->data.draw.count;
             const VertV *verts = (VertV *)(vertices + cmd->data.draw.first);
             const PSP_BlendInfo blendInfo = {
@@ -987,11 +991,13 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
                 const SDL_RenderCommandType nextcmdtype = nextcmd->command;
                 const size_t nextcount = nextcmd->data.draw.count;
                 const uint8_t nextgu_primitive = nextcount > 2 ? GU_LINE_STRIP : GU_LINES;
+                const SDL_BlendMode nextblend = nextcmd->data.draw.blend;
                 if (nextcmdtype != SDL_RENDERCMD_DRAW_LINES || 
                     gu_primitive != GU_LINES ||
                     gu_primitive != nextgu_primitive ||
                     (vertices + nextcmd->data.draw.first) != expectedNextVerts || 
-                    (count + nextcount) > MAX_VERTICES) {
+                    (count + nextcount) > MAX_VERTICES ||
+                    nextblend != thisblend) {
                     break; /* can't go any further on this draw call */
                 }
                 expectedNextVerts = (void *)((uintptr_t)expectedNextVerts + nextcount * sizeof(VertV));
@@ -1010,6 +1016,7 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
         {
             SDL_RenderCommand *finalcmd = cmd;
             SDL_RenderCommand *nextcmd = cmd->next;
+            SDL_BlendMode thisblend = cmd->data.draw.blend;
             size_t count = cmd->data.draw.count;
             const VertV *verts = (VertV *)(vertices + cmd->data.draw.first);
             const PSP_BlendInfo blendInfo = {
@@ -1021,9 +1028,11 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
             while (nextcmd) {
                 const SDL_RenderCommandType nextcmdtype = nextcmd->command;
                 const size_t nextcount = nextcmd->data.draw.count;
+                const SDL_BlendMode nextblend = nextcmd->data.draw.blend;
                 if (nextcmdtype != SDL_RENDERCMD_FILL_RECTS || 
                     (vertices + nextcmd->data.draw.first) != expectedNextVerts || 
-                    (count + nextcount) > MAX_VERTICES) {
+                    (count + nextcount) > MAX_VERTICES ||
+                    nextblend != thisblend) {
                     break; /* can't go any further on this draw call */
                 }
                 expectedNextVerts = (void *)((uintptr_t)expectedNextVerts + nextcount * sizeof(VertV));
@@ -1050,6 +1059,7 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
             SDL_Texture *texture = cmd->data.draw.texture;
             SDL_RenderCommand *finalcmd = cmd;
             SDL_RenderCommand *nextcmd = cmd->next;
+            SDL_BlendMode thisblend = cmd->data.draw.blend;
             const void *verts = (void *)(vertices + cmd->data.draw.first);
             size_t count = cmd->data.draw.count;
             const PSP_BlendInfo blendInfo = {
@@ -1064,11 +1074,13 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
                 const SDL_Texture *nexttexture = nextcmd->data.draw.texture;
                 const SDL_RenderCommandType nextcmdtype = nextcmd->command;
                 const size_t nextcount = nextcmd->data.draw.count;
+                const SDL_BlendMode nextblend = nextcmd->data.draw.blend;
                 
                 if (nextcmdtype != SDL_RENDERCMD_GEOMETRY || 
                     texture != nexttexture ||
                     (vertices + nextcmd->data.draw.first) != expectedNextVerts || 
-                    (count + nextcount) > MAX_VERTICES) {
+                    (count + nextcount) > MAX_VERTICES ||
+                    nextblend != thisblend) {
                     break; /* can't go any further on this draw call */
                 }
                 
