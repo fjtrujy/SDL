@@ -494,20 +494,20 @@ static inline int neededPassesForBlendMode(SDL_BlendMode blendMode)
 static inline unsigned int mask_alpha(int fpf) {
     switch (fpf) {
         case GU_PSM_8888: return 0xFF000000;  // A8
-        case GU_PSM_4444: return 0x0000F000;  // A4
-        case GU_PSM_5551: return 0x00008000;  // A1
+        case GU_PSM_4444: return 0x0F000000;  // A4
+        case GU_PSM_5551: return 0x01000000;  // A1
         case GU_PSM_5650: return 0x00000000;  // no alpha in framebuffer
-        default: return 0x00000000;
+        default: return 0xFF000000;
     }
 }
   
 static inline unsigned int mask_rgb(int fpf) {
     switch (fpf) {
         case GU_PSM_8888: return 0x00FFFFFF;  // BGR8
-        case GU_PSM_4444: return 0x00000FFF;  // BGR4
-        case GU_PSM_5551: return 0x00007FFF;  // BGR5
-        case GU_PSM_5650: return 0x0000FFFF;  // all 16 bits are BGR
-        default: return 0x00000000;
+        case GU_PSM_4444: return 0x000F0F0F;  // BGR4
+        case GU_PSM_5551: return 0x001F1F1F;  // BGR5
+        case GU_PSM_5650: return 0x001F3F1F;  // all 16 bits are BGR
+        default: return 0x00FFFFFF;
     }
 }
 
