@@ -763,7 +763,6 @@ static int PSP_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL
 
     if (texture) {
         VertTCV *vertices = (VertTCV *)SDL_AllocateRenderVertices(renderer, count * sizeof(VertTCV), 4, &cmd->data.draw.first);
-        PSP_Texture *psp_tex = (PSP_Texture *)texture->driverdata;
 
         if (!vertices) {
             return -1;
@@ -794,8 +793,8 @@ static int PSP_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL
 
             vertices->col = col_;
 
-            vertices->u = uv_[0] * psp_tex->width;
-            vertices->v = uv_[1] * psp_tex->height;
+            vertices->u = uv_[0] * texture->w;
+            vertices->v = uv_[1] * texture->h;
 
             vertices++;
         }
