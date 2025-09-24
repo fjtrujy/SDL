@@ -80,14 +80,14 @@ typedef struct
 
 typedef struct
 {
-    SDL_Color col;
+    uint32_t col;
     float x, y, z;
 } __attribute__((packed)) VertCV;
 
 typedef struct
 {
     float u, v;
-    SDL_Color col;
+    uint32_t col;
     float x, y, z;
 } __attribute__((packed)) VertTCV;
 
@@ -791,7 +791,7 @@ static int PSP_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL
             vertices->y = xy_[1] * scale_y;
             vertices->z = 0;
 
-            vertices->col = col_;
+            vertices->col = GU_ABGR(col_.a, col_.b, col_.g, col_.r);
 
             vertices->u = uv_[0] * texture->w;
             vertices->v = uv_[1] * texture->h;
@@ -826,7 +826,7 @@ static int PSP_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL
             vertices->x = xy_[0] * scale_x;
             vertices->y = xy_[1] * scale_y;
             vertices->z = 0;
-            vertices->col = col_;
+            vertices->col = GU_ABGR(col_.a, col_.b, col_.g, col_.r);
 
             vertices++;
         }
