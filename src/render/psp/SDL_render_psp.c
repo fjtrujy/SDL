@@ -294,12 +294,12 @@ static inline void fillSpriteVertices(VertTV *vertices, SliceSize *dimensions, S
     remainingHeight = (int)dstrect->h % sliceSize->height;
     hasRemainingWidth = remainingWidth > 0;
     hasRemainingHeight = remainingHeight > 0;
-    srcrectRateWidth = (float)(abs(srcrect->w - dimensions->width)) / (float)(abs(dstrect->w - dimensions->width));
-    srcrectRateHeight = (float)(abs(srcrect->h - dimensions->height)) / (float)(abs(dstrect->h - dimensions->height));
-    srcWidth = sliceSize->width * srcrectRateWidth;
-    srcHeight = sliceSize->height * srcrectRateHeight;
-    remainingSrcWidth = remainingWidth * srcrectRateWidth;
-    remainingSrcHeight = remainingHeight * srcrectRateHeight;
+    srcrectRateWidth = sliceSize->width / (float)dstrect->w;
+    srcrectRateHeight = sliceSize->height / (float)dstrect->h;
+    srcWidth = srcrect->w * srcrectRateWidth;
+    srcHeight = srcrect->h * srcrectRateHeight;
+    remainingSrcWidth = srcrect->w - (srcWidth * (dimensions->width - 1));
+    remainingSrcHeight = srcrect->h - (srcHeight * (dimensions->height - 1));
 
     for (i = 0; i < dimensions->width; i++) {
         for (j = 0; j < dimensions->height; j++) {
