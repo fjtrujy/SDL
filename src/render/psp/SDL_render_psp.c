@@ -36,6 +36,8 @@
 
 #define GPU_LIST_SIZE 32 * 1024
 #define MAX_VERTICES 65535
+#define MASK_ALPHA 0xFF000000
+#define MASK_RGB 0x00FFFFFF
 
 typedef struct
 {
@@ -491,26 +493,6 @@ static inline int neededPassesForBlendMode(SDL_BlendMode blendMode)
     }
 }
 
-static inline unsigned int mask_alpha(int fpf) {
-    switch (fpf) {
-        case GU_PSM_8888: return 0xFF000000;  // A8
-        case GU_PSM_4444: return 0xF0000000;  // A4
-        case GU_PSM_5551: return 0x80000000;  // A1
-        case GU_PSM_5650: return 0x00000000;  // no alpha in framebuffer
-        default: return 0xFF000000;
-    }
-}
-  
-static inline unsigned int mask_rgb(int fpf) {
-    switch (fpf) {
-        case GU_PSM_8888: return 0x00FFFFFF;  // BGR8
-        case GU_PSM_4444: return 0x00F0F0F0;  // BGR4
-        case GU_PSM_5551: return 0x00F8F8F8;  // BGR5
-        case GU_PSM_5650: return 0x00F8FCF8;  // all 16 bits are BGR
-        default: return 0x00FFFFFF;
-    }
-}
-
 static inline void setShadeModel(PSP_RenderData *data, uint8_t shade)
 {
     if (data->blendInfo.shade != shade) {
@@ -534,11 +516,11 @@ static inline void setBlendMode(SDL_Renderer *renderer, uint8_t blendMode, int p
         switch (passes) {
             case 0: // RGB pass
                 sceGuEnable(GU_BLEND);
-                sceGuPixelMask(mask_alpha(currentDrawBufferFormat(renderer)));
+                sceGuPixelMask(MASK_ALPHA);
                 sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
                 break;
             case 1: // Alpha pass
-                sceGuPixelMask(mask_rgb(currentDrawBufferFormat(renderer)));
+                sceGuPixelMask(MASK_RGB);
                 sceGuTexFunc(GU_TFX_MODULATE, GU_TCC_RGBA);
                 sceGuBlendFunc(GU_ADD, GU_FIX, GU_ONE_MINUS_SRC_ALPHA, 0xFFFFFFFF, 0);
                 break;
@@ -548,19 +530,19 @@ static inline void setBlendMode(SDL_Renderer *renderer, uint8_t blendMode, int p
         break;
     case SDL_BLENDMODE_ADD:
         sceGuEnable(GU_BLEND);
-        sceGuPixelMask(mask_alpha(currentDrawBufferFormat(renderer)));
+        sceGuPixelMask(MASK_ALPHA);
         sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_FIX, 0, 0x00FFFFFF);
         break;
     case SDL_BLENDMODE_MOD:
         sceGuEnable(GU_BLEND);
-        sceGuPixelMask(mask_alpha(currentDrawBufferFormat(renderer)));
+        sceGuPixelMask(MASK_ALPHA);
         sceGuBlendFunc(GU_ADD, GU_FIX, GU_SRC_COLOR, 0, 0);
         break;
     case SDL_BLENDMODE_MUL:
         switch (passes) {
             case 0: // Cs*Cd
                 sceGuEnable(GU_BLEND);
-                sceGuPixelMask(mask_alpha(currentDrawBufferFormat(renderer)));
+                sceGuPixelMask(MASK_ALPHA);
                 sceGuBlendFunc(GU_ADD, GU_DST_COLOR, GU_FIX, 0, 0x00000000);
                 break;
             case 1: // + Cd*(1 - srcA)
