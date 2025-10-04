@@ -925,38 +925,6 @@ static inline int PSP_RenderClear(SDL_Renderer *renderer, SDL_RenderCommand *cmd
     return 0;
 }
 
-static inline int PSP_RenderCopy(SDL_Renderer *renderer, void *vertices, SDL_RenderCommand *cmd)
-{
-    uint32_t tbw;
-    void *twp;
-    PSP_RenderData *data = (PSP_RenderData *)renderer->driverdata;
-    SDL_Texture *texture = cmd->data.draw.texture;
-    PSP_Texture *psp_tex = (PSP_Texture *)texture->driverdata;
-    const size_t count = cmd->data.draw.count;
-    const VertTV *verts = (VertTV *)(vertices + cmd->data.draw.first);
-    const int passes = neededPassesForBlendMode(cmd->data.draw.blend);
-
-    prepareTextureForUpload(texture);
-
-    tbw = psp_tex->swizzled ? psp_tex->textureWidth : psp_tex->width;
-    twp = psp_tex->swizzled ? psp_tex->swizzledData : psp_tex->data;
-
-    sceGuTexMode(psp_tex->format, 0, 0, psp_tex->swizzled);
-    sceGuTexImage(0, psp_tex->textureWidth, psp_tex->textureHeight, tbw, twp);
-    sceGuTexFilter(psp_tex->filter, psp_tex->filter);
-    sceGuEnable(GU_TEXTURE_2D);
-
-    setShadeModel(data, GU_FLAT);
-    for (int i = 0; i < passes; i++) {
-        setBlendMode(renderer, cmd->data.draw.blend, i);
-        sceGuDrawArray(GU_SPRITES, GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
-    }
-    postBlendMode(data, cmd->data.draw.blend);
-    sceGuDisable(GU_TEXTURE_2D);
-
-    return 0;
-}
-
 static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, void *vertices, size_t vertsize)
 {
     PSP_RenderData *data = (PSP_RenderData *)renderer->driverdata;
@@ -1101,7 +1069,59 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
         }
         case SDL_RENDERCMD_COPY:
         {
-            PSP_RenderCopy(renderer, vertices, cmd);
+            SDL_Texture *texture = cmd->data.draw.texture;
+            SDL_RenderCommand *finalcmd = cmd;
+            SDL_RenderCommand *nextcmd = cmd->next;
+            SDL_BlendMode thisblend = cmd->data.draw.blend;
+            const void *verts = (void *)(vertices + cmd->data.draw.first);
+            size_t count = cmd->data.draw.count;
+            const int passes = neededPassesForBlendMode(thisblend);
+            const size_t structSize = sizeof(VertTV);
+            void *expectedNextVerts = (void *)((uintptr_t)verts + count * structSize);
+            PSP_Texture *psp_tex = (PSP_Texture *)texture->driverdata;
+            uint32_t tbw;
+            void *twp;
+
+            while (nextcmd) {
+                const SDL_Texture *nexttexture = nextcmd->data.draw.texture;
+                const SDL_RenderCommandType nextcmdtype = nextcmd->command;
+                const size_t nextcount = nextcmd->data.draw.count;
+                const SDL_BlendMode nextblend = nextcmd->data.draw.blend;
+                
+                if (nextcmdtype != SDL_RENDERCMD_COPY || 
+                    texture != nexttexture ||
+                    (vertices + nextcmd->data.draw.first) != expectedNextVerts || 
+                    (count + nextcount) > MAX_VERTICES ||
+                    nextblend != thisblend) {
+                    break; /* can't go any further on this draw call */
+                }
+                
+                expectedNextVerts = (void *)((uintptr_t)expectedNextVerts + nextcount * structSize);
+                count += nextcount;
+                finalcmd = nextcmd;
+                nextcmd = nextcmd->next;
+            }
+
+            prepareTextureForUpload(texture);
+
+            tbw = psp_tex->swizzled ? psp_tex->swizzledWidth : psp_tex->width;
+            twp = psp_tex->swizzled ? psp_tex->swizzledData : psp_tex->data;
+
+            sceGuTexMode(psp_tex->format, 0, 0, psp_tex->swizzled);
+            sceGuTexImage(0, psp_tex->textureWidth, psp_tex->textureHeight, tbw, twp);
+            sceGuTexFilter(psp_tex->filter, psp_tex->filter);
+            sceGuEnable(GU_TEXTURE_2D);
+            
+            setShadeModel(data, GU_FLAT);
+            for (int i = 0; i < passes; i++) {
+                setBlendMode(renderer, thisblend, i);
+                sceGuDrawArray(GU_SPRITES, GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
+            }
+            postBlendMode(data, thisblend);
+            sceGuDisable(GU_TEXTURE_2D);
+
+            cmd = finalcmd;
+            
             break;
         }
         case SDL_RENDERCMD_COPY_EX: /* unused */
